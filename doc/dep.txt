@@ -1,0 +1,59 @@
+
+//继承
+dag{
+    Camera -> FilamentAPI
+    BufferObject -> FilamentAPI
+    ColorGrading -> FilamentAPI
+    DebugRegistry -> FilamentAPI
+    Fence -> FilamentAPI
+    IndexBuffer -> FilamentAPI
+    IndirectLight -> FilamentAPI
+    LightManager -> FilamentAPI
+    Material -> FilamentAPI
+    MaterialInstance -> FilamentAPI
+    MorphTargetBuffer -> FilamentAPI
+    RenderableManager -> FilamentAPI
+    Renderer -> FilamentAPI
+    RenderTarget -> FilamentAPI
+    Scene -> FilamentAPI
+    SkinningBuffer -> FilamentAPI
+    Skybox -> FilamentAPI
+    Stream -> FilamentAPI
+    SwapChain -> FilamentAPI
+    Texture -> FilamentAPI
+    TransformManager -> FilamentAPI
+    VertexBuffer -> FilamentAPI
+    View -> FilamentAPI
+    CameraManager -> FilamentAPI
+}
+
+// has a builder
+dag{
+    BufferObject
+    ColorGrading
+    IndexBuffer
+    IndirectLight
+    LightManager
+    Material
+    MorphTargetBuffer
+    RenderableManager
+    RenderTarget
+    SkinningBuffer
+    Skybox
+    Stream
+    Texture
+    VertexBuffer
+    FrameGraph
+}
+
+//读源码的依赖顺序
+dag{
+    Skybox -> RenderableManager
+    RenderableManager -> EntityInstance
+    RenderableManager -> Entity
+    RenderableManager -> FRenderableManager
+    FRenderableManager -> SingleInstanceComponentManager
+    SingleInstanceComponentManager -> EntityManager
+    EntityManager -> Entity
+    RenderableManager -> BuilderBase
+}
