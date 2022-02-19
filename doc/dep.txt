@@ -57,3 +57,16 @@ dag{
     EntityManager -> Entity
     RenderableManager -> BuilderBase
 }
+
+
+Entity 是一个实体对象 ， 它的生命周期由 全局线程安全的单例对象 EntityManager 管理。
+一个Entity 有一个ID, ID是 EntityManager 创建的时候分配的。 
+EntityManager 可分配的Entity数量是有最大数量上限的，131072 (1 << 17)。
+EntityManager 分配的Entity 数量超过了上限的时候 创建出来的Entity对象就是不合法的。
+EntityManager 可以检查 Entity 对象的合法性。
+EntityManager 的ID分配算法暂时没有看懂。
+Entity的哈希值就是它的ID。
+如果一个 Entity 没有回收，Entity就不可能再分配一个具有相同ID的Entity出来，所以如果两个Entity对象的ID,HASH相同，
+那么其实这两个Entity对象 其实就是同一个Entity。一个Entity不能回收两次。
+
+

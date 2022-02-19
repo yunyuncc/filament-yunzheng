@@ -2,6 +2,8 @@
 #include <filamentapp/FilamentApp.h>
 #include <filament/Skybox.h>
 #include <filament/Scene.h>
+#include <utils/Entity.h>
+#include <utils/EntityManager.h>
 #include <iostream>
 using namespace std;
 
@@ -16,9 +18,43 @@ struct App {
     Skybox* skybox;
     //Entity renderable;
 };
+using namespace utils;
+
+class MyListener: public EntityManager::Listener 
+{
+public:
+    void onEntitiesDestroyed(size_t n, Entity const* entities) noexcept override{
+        for(size_t i = 0; i < n; i++){
+            cout << "entity " <<  entities[i].getId() << " is distoryed" << endl;
+            assert(!EntityManager::get().isAlive(entities[i]));
+        }
+    }
+
+};
+
 
 int main()
 {
+    MyListener l;
+    auto& m = EntityManager::get();
+    m.registerListener(&l);
+    auto e = m.create();
+    cout << "create entity:" << e.getId() << endl;
+    auto e2 = e;
+    assert(e2 == e);
+    cout << "e2:" << e2.getId() << endl;
+    std::size_t e_hash = std::hash<Entity>{}(e);
+    std::cout << "hash(" << e.getId() << ") = " << e_hash << '\n';
+
+    assert(m.isAlive(e));
+    cout << "begin destory entity:" << e.getId() << endl;
+    m.destroy(e);
+    cout << "end destory entity:" << e.getId() << endl;
+    assert(!m.isAlive(e));
+    
+
+    
+#if 0
     Config config;
     config.title = "yunzheng_demo";
     App app;
@@ -34,5 +70,6 @@ int main()
     };
 
     FilamentApp::get().run(config, setup, cleanup);
+#endif
     return 0;
 }
