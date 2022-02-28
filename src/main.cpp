@@ -4,6 +4,10 @@
 #include <filament/Scene.h>
 #include <utils/Entity.h>
 #include <utils/EntityManager.h>
+#include <utils/NameComponentManager.h>
+#include <utils/StructureOfArrays.h>
+#include <cassert>
+
 #include <iostream>
 using namespace std;
 
@@ -29,12 +33,9 @@ public:
             assert(!EntityManager::get().isAlive(entities[i]));
         }
     }
-
 };
 
-
-int main()
-{
+void testEntityManager(){
     MyListener l;
     auto& m = EntityManager::get();
     m.registerListener(&l);
@@ -51,9 +52,78 @@ int main()
     m.destroy(e);
     cout << "end destory entity:" << e.getId() << endl;
     assert(!m.isAlive(e));
-    
+}
 
-    
+void testStructureOfArrays(){
+
+    StructureOfArrays<int64_t, double, std::string> soa(5);
+
+    cout << "ArrayCount:" << soa.getArrayCount() << endl;
+    cout << "0 NeededSize:" << soa.getNeededSize(0) << endl;
+    cout << "1 NeededSize:" << soa.getNeededSize(1) << endl;
+    cout << "2 NeededSize:" << soa.getNeededSize(2) << endl;
+    cout << "3 NeededSize:" << soa.getNeededSize(3) << endl;
+    cout << "4 NeededSize:" << soa.getNeededSize(4) << endl;
+    soa.setCapacity(10);
+    cout << "size:" << soa.size() << endl;
+    cout << "cap :" << soa.capacity() << endl;
+
+    //往每个数组里面塞两个元素
+    auto name = soa.push_back(1, 1.1f, std::string("wyy")).back<2>();
+    cout << "push_back:" << name << endl;
+    soa.push_back(2, 2.2f, std::string("wdd"));
+    cout << "size:" << soa.size() << endl;
+    cout << "cap :" << soa.capacity() << endl;
+
+    //取得某个数组的首地址
+    double* nums = soa.data<1>();
+    cout << "nums[0]:" << nums[0] << endl;
+    cout << "nums[1]:" << nums[1] << endl;
+    int64_t* Nums = soa.data<0>();
+    cout << "Nums[0]:" << Nums[0] << endl;
+    cout << "Nums[1]:" << Nums[1] << endl;
+
+    //遍历某个数组的所有元素
+    for(auto it = soa.begin<1>(); it != soa.end<1>(); ++it){
+        cout << *it << endl;
+    }
+
+    //直接取第几个数组的第几个元素
+    cout << "elementAt<1>(1):" << soa.elementAt<1>(1) << endl;
+    cout << "elementAt<0>(0):" << soa.elementAt<0>(0) << endl;
+
+    //按索引遍历，可以得到所有数组内的 某个索引下的值
+    for(auto it = soa.begin(); it != soa.end(); ++it){
+        cout << "wyy test :" <<  it.get<0>() << " ," << it.get<1>() << " :" << it.get<2>()<< endl;
+    }
+
+    //按类型遍历，遍历每个类型的数组
+    size_t s = soa.size();
+    soa.forEach([s](auto*p){
+        for(size_t i = 0; i < s; i++){
+            cout << "for each" << p[i] <<  endl;
+        }
+        
+    });
+}
+
+int main()
+{
+#if 0
+    testEntityManager();
+    std::shared_ptr<NameComponentManager> names = std::make_shared<NameComponentManager>(EntityManager::get());
+#endif
+
+#if 0
+    testStructureOfArrays();
+#endif
+
+
+
+
+
+
+
 #if 0
     Config config;
     config.title = "yunzheng_demo";

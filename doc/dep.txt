@@ -54,6 +54,7 @@ dag{
     RenderableManager -> FRenderableManager
     FRenderableManager -> SingleInstanceComponentManager
     SingleInstanceComponentManager -> EntityManager
+    SingleInstanceComponentManager -> StructureOfArrays
     EntityManager -> Entity
     RenderableManager -> BuilderBase
 }
@@ -69,4 +70,19 @@ Entity的哈希值就是它的ID。
 如果一个 Entity 没有回收，Entity就不可能再分配一个具有相同ID的Entity出来，所以如果两个Entity对象的ID,HASH相同，
 那么其实这两个Entity对象 其实就是同一个Entity。一个Entity不能回收两次。
 
+EntityInstance 和 Entity 什么关系？它们都是一个ID
+
+
+
+StructureOfArrays 就是一个范型数据结构，可以表示任意的结构体里面有多个各种类型，但是大小相同的数组。
+比如:
+struct DemoDatas{
+    int64_t         IDS[10];
+    std::string     Names[10];
+    float           Values[10];
+} demoDatas;
+
+就可以表示为
+StructureOfArrays<int64_t, std::string, float> demoDatas(10);
+并且可以使用迭代器访问。
 
