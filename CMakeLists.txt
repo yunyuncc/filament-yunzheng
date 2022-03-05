@@ -1,11 +1,16 @@
 cmake_minimum_required(VERSION 3.19)
 project(filament-demo C CXX ASM)
 set(CMAKE_CXX_STANDARD 17)
+
+#set(FILAMENT_INSTALL_PREFIX "/Users/yunzheng/Desktop/code/filament-1.18.0/out/debug")
+#set(FILAMENT_INSTALL_PREFIX "/Users/yun/Desktop/github.com/filament-1.20.0/out/debug")
+set(FILAMENT_INSTALL_PREFIX "/Users/yun/Desktop/github.com/filament-1.18.0/out/debug")
+
 add_executable(matc IMPORTED)
-set_property(TARGET matc PROPERTY IMPORTED_LOCATION /Users/yunzheng/Desktop/code/filament-1.18.0/out/debug/filament/bin/matc)
+set_property(TARGET matc PROPERTY IMPORTED_LOCATION "${FILAMENT_INSTALL_PREFIX}/filament/bin/matc")
 
 add_executable(resgen IMPORTED)
-set_property(TARGET resgen PROPERTY IMPORTED_LOCATION /Users/yunzheng/Desktop/code/filament-1.18.0/out/debug/filament/bin/resgen)
+set_property(TARGET resgen PROPERTY IMPORTED_LOCATION "${FILAMENT_INSTALL_PREFIX}/filament/bin/resgen")
 
 
 # By default, build with support for OpenGL on all platforms.
@@ -62,13 +67,17 @@ endfunction()
 
 
 set(SRC src/main.cpp)
-include_directories(/Users/yunzheng/Desktop/code/filament-1.18.0/out/debug/filament/include)
+include_directories(${FILAMENT_INSTALL_PREFIX}/filament/include)
 
 ##这里面都是filamentapp的依赖
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/libsdl2/tnt)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/imgui/tnt)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/filamentlibs/filagui)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/stb/tnt)
+
+#不知道为什么assimp 的config.h 生成到这里了
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/third_party/libassimp/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/third_party/libassimp)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/libassimp/tnt)
 
 set(TARGET demo)
@@ -94,9 +103,10 @@ add_subdirectory(filamentapp)
 add_executable(${TARGET} ${SRC})
 target_compile_features(${TARGET} PRIVATE cxx_std_17)
 
-target_link_directories(${TARGET} PRIVATE /Users/yunzheng/Desktop/code/filament-1.18.0/out/debug/filament/lib/x86_64)
+target_link_directories(${TARGET} PRIVATE ${FILAMENT_INSTALL_PREFIX}/filament/lib/x86_64)
 target_link_libraries(${TARGET} PRIVATE ${FRAMEWORKS})
 target_link_libraries(${TARGET} PRIVATE ${FILAMENT_LIBS})
 target_link_libraries(${TARGET} PRIVATE filamentapp)
 target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/filamentapp/include)
+
 

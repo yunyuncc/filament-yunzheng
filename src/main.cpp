@@ -114,7 +114,7 @@ int main()
     std::shared_ptr<NameComponentManager> names = std::make_shared<NameComponentManager>(EntityManager::get());
 #endif
 
-#if 0
+#if 1
     testStructureOfArrays();
 #endif
 
