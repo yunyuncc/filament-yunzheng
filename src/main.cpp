@@ -6,6 +6,7 @@
 #include <utils/EntityManager.h>
 #include <utils/NameComponentManager.h>
 #include <utils/StructureOfArrays.h>
+#include <utils/SingleInstanceComponentManager.h>
 #include <cassert>
 
 #include <iostream>
@@ -107,6 +108,55 @@ void testStructureOfArrays(){
     });
 }
 
+void testSingleInstanceComponentManager(){
+    //name, width, height
+    SingleInstanceComponentManager<std::string, uint32_t, uint32_t> rectManager;
+    
+    auto e = EntityManager::get().create();
+    auto e2 = EntityManager::get().create();
+    auto instance = rectManager.addComponent(e);
+    cout << "componentCount:" << rectManager.getComponentCount() << endl;
+
+    rectManager.elementAt<0>(instance) = "wyy";
+    rectManager.elementAt<1>(instance) = 1920;
+    rectManager.elementAt<2>(instance) = 1080;
+
+    cout << rectManager.elementAt<0>(instance) << "," << rectManager.elementAt<1>(instance) << "," << rectManager.elementAt<2>(instance) << endl;
+    assert(rectManager.hasComponent(e));
+    assert(!rectManager.hasComponent(e2));
+}
+
+void testNameComponentManager()
+{
+    auto names = NameComponentManager(EntityManager::get());
+    auto e = EntityManager::get().create();
+    names.addComponent(e);
+    auto i = names.getInstance(e);
+    names.setName(i, "wyy");
+    cout << names.getName(i) << endl;
+}
+
+class A{
+public:
+    // prevent heap allocation
+    static void *operator new     (size_t) = delete;
+    static void *operator new[]   (size_t) = delete;
+    static void  operator delete  (void*)  = delete;
+    static void  operator delete[](void*)  = delete;
+    // disallow copy and assignment
+    //A(A const&) = delete;
+    //A(A&&) = delete;
+    //A& operator=(A const&) = delete;
+    //A& operator=(A&&) = delete;
+protected:
+    ~A() = default;
+    A() = default;
+};
+
+class B:public A{
+
+};
+
 int main()
 {
 #if 0
@@ -114,15 +164,22 @@ int main()
     std::shared_ptr<NameComponentManager> names = std::make_shared<NameComponentManager>(EntityManager::get());
 #endif
 
-#if 1
+#if 0
     testStructureOfArrays();
 #endif
+#if 0
+    testSingleInstanceComponentManager();
+#endif
 
+#if 0
+    testNameComponentManager();
+#endif
 
-
-
-
-
+    //FilamentAPI api;
+    
+    B b;
+    std::vector<B> vb;
+    vb.push_back(b);
 
 #if 0
     Config config;

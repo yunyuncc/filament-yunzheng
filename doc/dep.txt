@@ -48,7 +48,18 @@ dag{
 
 //读源码的依赖顺序
 dag{
-    Skybox -> RenderableManager
+    Skybox -> FilamentAPI //Skybox is a FilamentAPI
+    Skybox -> Skybox::Builder //Skybox has a Builder
+    Skybox::Builder -> BuilderBase<BuilderDetails>  // is
+
+    FSkybox -> Skybox  //FSkybox is a Skybox
+    FSkybox -> FMaterial 
+    FSkybox -> FMaterialInstance
+    FSkybox -> MaterialInstance 
+    MaterialInstance -> TextureSampler
+    Skybox -> Texture
+    FSkybox -> RenderableManager  // FSkybox has a RenderableManager
+    
     RenderableManager -> EntityInstance
     RenderableManager -> Entity
     RenderableManager -> FRenderableManager
@@ -59,6 +70,8 @@ dag{
     RenderableManager -> BuilderBase
 }
 
+-------------------------------------------------
+Filament 是怎么实现ECS的？
 
 Entity 是一个实体对象 ， 它的生命周期由 全局线程安全的单例对象 EntityManager 管理。
 一个Entity 有一个ID, ID是 EntityManager 创建的时候分配的。 
@@ -71,9 +84,6 @@ Entity的哈希值就是它的ID。
 那么其实这两个Entity对象 其实就是同一个Entity。一个Entity不能回收两次。
 
 EntityInstance 和 Entity 什么关系？它们都是一个ID
-
-
-
 StructureOfArrays 就是一个范型数据结构，可以表示任意的结构体里面有多个各种类型，但是大小相同的数组。
 比如:
 struct DemoDatas{
@@ -85,4 +95,20 @@ struct DemoDatas{
 就可以表示为
 StructureOfArrays<int64_t, std::string, float> demoDatas(10);
 并且可以使用迭代器访问。
+
+SingleInstanceComponentManager
+
+-------------------------------------------------
+Filament 的API为什么要这么设计
+Builder 构建者模式
+
+
+ * FilamentAPI is used to define an API in filament.
+ * It ensures the class defining the API can't be created, destroyed
+ * or copied by the caller.
+ 所有的接口都继承 FilamentAPI ,这样就可以约束用户的行为
+
+ FilamentAPI 的析构函数 是 protected not-virtual 的， 构造函数是protected 表明FilamentAPI 也就是说该类无法直接被构造和析构函数， 我们无法直接使用该类， 它只能作为基类。
+ 删除了 new操作符，用户无法new 它
+ 删除了拷贝和赋值，用户无法把它直接放到容器当中
 
