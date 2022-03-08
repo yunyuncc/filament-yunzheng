@@ -181,6 +181,10 @@ int main()
     std::vector<B> vb;
     vb.push_back(b);
 
+    size_t alignment = alignof(std::max_align_t);
+    cout << "max alignment:" << alignment << endl;
+    cout << "min sizeof(void*):" << sizeof(void*) << endl;
+
 #if 0
     Config config;
     config.title = "yunzheng_demo";

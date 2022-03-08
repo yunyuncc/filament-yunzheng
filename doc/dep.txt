@@ -68,9 +68,33 @@ dag{
     SingleInstanceComponentManager -> StructureOfArrays
     EntityManager -> Entity
     RenderableManager -> BuilderBase
+
+
+-----------------------------------------------------------------------------------------
+内存的分配
+    builder::build
+    Engine -> FEngine
+    FEngine -> HeapAllocatorArena
+    FEngine -> ResourceList
+    HeapAllocatorArena -> HeapAllocator
+    HeapAllocatorArena -> LockingPolicy
+    HeapAllocatorArena -> TrackingPolicy
+    HeapAllocator -> aligned_alloc
+    aligned_alloc -> posix_memalign
+
+    HeapAllocatorArena: 本质上就是一个支持调试，封装了一些功能， 比如直接构造出一个类，比如调试功能
+    HeapAllocator: 默认就有内存对齐的分配器
 }
 
--------------------------------------------------
+---------------------------
+如何理解内存对齐
+Whereas malloc gives you a chunk of memory that could have any alignment (the only requirement is that it must be aligned for the largest primitive type that the implementation supports), posix_memalign gives you a chunk of memory that is guaranteed to have the requested alignment.
+
+So the result of e.g. posix_memalign(&p, 32, 128) will be a 128-byte chunk of memory whose start address is guaranteed to be a multiple of 32.
+
+This is useful for various low-level operations (such as using SSE instructions, or DMA), that require memory that obeys a particular alignment.
+
+-----------------------------------------------------------------------------------------
 Filament 是怎么实现ECS的？
 
 Entity 是一个实体对象 ， 它的生命周期由 全局线程安全的单例对象 EntityManager 管理。
