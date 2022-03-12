@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.19)
 project(filament-demo C CXX ASM)
 set(CMAKE_CXX_STANDARD 17)
 
-#set(FILAMENT_INSTALL_PREFIX "/Users/yunzheng/Desktop/code/filament-1.18.0/out/debug")
+set(FILAMENT_INSTALL_PREFIX "/Users/yunzheng/Desktop/code/filament-1.18.0/out/debug")
 #set(FILAMENT_INSTALL_PREFIX "/Users/yun/Desktop/github.com/filament-1.20.0/out/debug")
-set(FILAMENT_INSTALL_PREFIX "/Users/yun/Desktop/github.com/filament-1.18.0/out/debug")
+#set(FILAMENT_INSTALL_PREFIX "/Users/yun/Desktop/github.com/filament-1.18.0/out/debug")
 
 add_executable(matc IMPORTED)
 set_property(TARGET matc PROPERTY IMPORTED_LOCATION "${FILAMENT_INSTALL_PREFIX}/filament/bin/matc")

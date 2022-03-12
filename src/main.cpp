@@ -2,17 +2,25 @@
 #include <filamentapp/FilamentApp.h>
 #include <filament/Skybox.h>
 #include <filament/Scene.h>
+#include <filament/VertexBuffer.h>
 #include <utils/Entity.h>
 #include <utils/EntityManager.h>
 #include <utils/NameComponentManager.h>
 #include <utils/StructureOfArrays.h>
 #include <utils/SingleInstanceComponentManager.h>
+#include <utils/Allocator.h>
+#include <utils/bitset.h>
 #include <cassert>
 
 #include <iostream>
 using namespace std;
 
 using namespace filament;
+
+using HeapAllocatorArena = utils::Arena<
+        utils::HeapAllocator,
+        utils::LockingPolicy::Mutex,
+        utils::TrackingPolicy::DebugAndHighWatermark>;
 
 struct App {
     VertexBuffer* vb;
@@ -138,25 +146,55 @@ void testNameComponentManager()
 
 class A{
 public:
-    // prevent heap allocation
-    static void *operator new     (size_t) = delete;
-    static void *operator new[]   (size_t) = delete;
-    static void  operator delete  (void*)  = delete;
-    static void  operator delete[](void*)  = delete;
-    // disallow copy and assignment
-    //A(A const&) = delete;
-    //A(A&&) = delete;
-    //A& operator=(A const&) = delete;
-    //A& operator=(A&&) = delete;
-protected:
-    ~A() = default;
-    A() = default;
+    A(double n , const std::string& s): num(n), str(s)
+    {
+        cout << "A created" << endl;
+    }
+    ~A(){
+        cout << "A destoryd" << endl;
+    }
+    double num;
+    std::string str;
 };
 
-class B:public A{
+void testAllocator(){
+    HeapAllocatorArena heapAllocator;
+    double* d = static_cast<double*>(heapAllocator.alloc(sizeof(double)));
+    *d = 1.0;
+    heapAllocator.free(d, sizeof(*d));
+    
+    A* a = heapAllocator.make<A>(1.0f, "aaaa");
+    heapAllocator.destroy(a);
+}
 
-};
+void testBitset()
+{
+    utils::bitset8 s;
+    assert(s.all() == false);
+    assert(s.any() == false);
+    assert(!s[0]);
+    s.set(0);
+    assert(s[0]);
 
+
+    assert(s.all() == false);
+    assert(s.any() == true);
+    assert(s.count() == 1);
+    s.set(7);
+    s.set(6);
+    s.set(5);
+    s.set(4);
+    s.set(3);
+    s.set(2);
+    s.set(1);
+    assert(s.count() == 8);
+    assert(s.all() == true);
+    assert(s.any() == true);
+    s.flip(0);
+    assert(s.count() == 7);
+    assert(s.all() == false);
+    assert(s.any() == true);
+}
 int main()
 {
 #if 0
@@ -175,15 +213,24 @@ int main()
     testNameComponentManager();
 #endif
 
-    //FilamentAPI api;
-    
-    B b;
-    std::vector<B> vb;
-    vb.push_back(b);
+#if 0
+    testAllocator();
+#endif
 
-    size_t alignment = alignof(std::max_align_t);
-    cout << "max alignment:" << alignment << endl;
-    cout << "min sizeof(void*):" << sizeof(void*) << endl;
+#if 0
+    testBitset();
+#endif
+
+#if 1
+    Engine* engine = Engine::create();
+    auto vertexBuilder = VertexBuffer::Builder()
+    .vertexCount(3)
+    .bufferCount(1)//一个属性就由一个buffer来放, bufferCount 必须和 attribute 的数量相等
+    .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3);
+    VertexBuffer* vb = vertexBuilder.build(*engine);
+    engine->destroy(vb);
+    Engine::destroy(&engine);
+#endif
 
 #if 0
     Config config;

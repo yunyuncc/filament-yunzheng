@@ -84,6 +84,8 @@ dag{
 
     HeapAllocatorArena: 本质上就是一个支持调试，封装了一些功能， 比如直接构造出一个类，比如调试功能
     HeapAllocator: 默认就有内存对齐的分配器
+
+    ResourceList 是一个set的封装
 }
 
 ---------------------------
@@ -135,4 +137,32 @@ Builder 构建者模式
  FilamentAPI 的析构函数 是 protected not-virtual 的， 构造函数是protected 表明FilamentAPI 也就是说该类无法直接被构造和析构函数， 我们无法直接使用该类， 它只能作为基类。
  删除了 new操作符，用户无法new 它
  删除了拷贝和赋值，用户无法把它直接放到容器当中
+
+-----
+理解 Filament 的 Builder 模式
+
+1. Filament 的API 对象都继承了FilamentAPI, 所以用户无法直接在栈中创建该对象，也无法直接 new 该对象
+   强制使用户只能通过Builder来创建该对象。
+
+2. Filament 的 Engine 内部有各个API对象的 实现类的 的ResourceList
+   比如 VertexBuffer 这个API对象， 它的实现类其实是 FVertexBuffer。Engine 中就包含了 ResourceList<FVertexBuffer> 这个资源列表。
+
+3. 用户在创建 VertexBuffer 的时候 首先需要创建 VertexBuffer::Builder。
+   然后使用builder对该对象进行必要的属性设置，最后调用build 函数来创建该对象。
+
+4. build 的时候 首先会对 用户设置的参数进行检查，如果设置了不合法的参数就直接报错，
+   避免不熟悉的用户创建出来辣鸡对象。
+5. build 的的第二步 是调用Engine 的 createVertexBuffer 函数。该函数的参数是该builder。
+
+6. FEngine 的 create函数 会使用该builder作为构造函数的参数 ， 由 HeapAllocator 构造
+   FVertexBuffer 对象，并放入 ResourceList<FVertexBuffer> 。
+   然后返回构造好的子类对象的指针。
+
+7. 所以每个由Engine管理的API对象 的具体实现类(F开头) 都一定会有一个以builder为参数的构造函数。
+
+8. 这个复杂的Builder模式的优点：
+    隐藏了实现细节，用户连成员变量有哪些够不知道。
+    ABI 兼容。
+    避免了错误的参数导致的bug。
+-------------------------------------------------------
 
