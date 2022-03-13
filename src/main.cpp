@@ -4,6 +4,8 @@
 #include <filament/Scene.h>
 #include <filament/VertexBuffer.h>
 #include <filament/IndexBuffer.h>
+#include <filament/Material.h>
+#include "resources/filamentapp.h"
 #include <utils/Entity.h>
 #include <utils/EntityManager.h>
 #include <utils/NameComponentManager.h>
@@ -254,7 +256,17 @@ int main()
     ib->setBuffer(*engine,
                 IndexBuffer::BufferDescriptor(TRIANGLE_INDICES, 6, nullptr));
     assert(sizeof(TRIANGLE_INDICES) == 6);
+
+    Material* mat = Material::Builder()
+                    .package(FILAMENTAPP_BAKEDCOLOR_DATA, FILAMENTAPP_BAKEDCOLOR_SIZE)
+                    .build(*engine);
+    utils::Entity renderable = EntityManager::get().create();
+    
+    
+    engine->destroy(mat);
+    engine->destroy(ib);
     engine->destroy(vb);
+
     Engine::destroy(&engine);
 #endif
 

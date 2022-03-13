@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.19)
 project(filament-demo C CXX ASM)
 set(CMAKE_CXX_STANDARD 17)
 
-set(FILAMENT_INSTALL_PREFIX "/Users/yunzheng/Desktop/code/filament-1.18.0/out/debug")
+#set(FILAMENT_INSTALL_PREFIX "/Users/yunzheng/Desktop/code/filament-1.18.0/out/debug")
 #set(FILAMENT_INSTALL_PREFIX "/Users/yun/Desktop/github.com/filament-1.20.0/out/debug")
-#set(FILAMENT_INSTALL_PREFIX "/Users/yun/Desktop/github.com/filament-1.18.0/out/debug")
+set(FILAMENT_INSTALL_PREFIX "/Users/yun/Desktop/github.com/filament-1.18.0/out/debug")
 
 add_executable(matc IMPORTED)
 set_property(TARGET matc PROPERTY IMPORTED_LOCATION "${FILAMENT_INSTALL_PREFIX}/filament/bin/matc")
@@ -108,5 +108,6 @@ target_link_libraries(${TARGET} PRIVATE ${FRAMEWORKS})
 target_link_libraries(${TARGET} PRIVATE ${FILAMENT_LIBS})
 target_link_libraries(${TARGET} PRIVATE filamentapp)
 target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/filamentapp/include)
+target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/filamentapp/generated)
 
 

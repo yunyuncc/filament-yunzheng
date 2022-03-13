@@ -97,6 +97,7 @@ ${CMAKE_CURRENT_LIST_DIR}/materials/aiDefaultMat.mat
 ${CMAKE_CURRENT_LIST_DIR}/materials/aiDefaultTrans.mat
 ${CMAKE_CURRENT_LIST_DIR}/materials/depthVisualizer.mat
 ${CMAKE_CURRENT_LIST_DIR}/materials/transparentColor.mat
+${CMAKE_CURRENT_LIST_DIR}/materials/bakedColor.mat
 )
 
 set(GENERATION_ROOT ${CMAKE_CURRENT_BINARY_DIR})
