@@ -3,6 +3,7 @@
 #include <filament/Skybox.h>
 #include <filament/Scene.h>
 #include <filament/VertexBuffer.h>
+#include <filament/IndexBuffer.h>
 #include <utils/Entity.h>
 #include <utils/EntityManager.h>
 #include <utils/NameComponentManager.h>
@@ -222,12 +223,37 @@ int main()
 #endif
 
 #if 1
+    struct Vertex {
+        filament::math::float2 position;
+        uint32_t color;
+    };
+    static const Vertex TRIANGLE_VERTICES[3] = {
+        {{1, 0}, 0xffff0000u},
+        {{cos(M_PI * 2 / 3), sin(M_PI * 2 / 3)}, 0xff00ff00u},
+        {{cos(M_PI * 4 / 3), sin(M_PI * 4 / 3)}, 0xff0000ffu},
+    };
+    static constexpr uint16_t TRIANGLE_INDICES[3] = { 0, 1, 2 };
     Engine* engine = Engine::create();
-    auto vertexBuilder = VertexBuffer::Builder()
-    .vertexCount(3)
-    .bufferCount(1)//一个属性就由一个buffer来放, bufferCount 必须和 attribute 的数量相等
-    .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3);
-    VertexBuffer* vb = vertexBuilder.build(*engine);
+
+    //申请顶点缓冲
+    VertexBuffer* vb = VertexBuffer::Builder()
+                .vertexCount(3)
+                .bufferCount(1)
+                .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 12)
+                .attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::UBYTE4, 8, 12)
+                .normalized(VertexAttribute::COLOR)
+                .build(*engine);
+    //设置顶点缓冲
+    vb->setBufferAt(*engine, 0,
+                VertexBuffer::BufferDescriptor(TRIANGLE_VERTICES, 36, nullptr));
+
+    IndexBuffer* ib = IndexBuffer::Builder()
+                .indexCount(3)
+                .bufferType(IndexBuffer::IndexType::USHORT)
+                .build(*engine);
+    ib->setBuffer(*engine,
+                IndexBuffer::BufferDescriptor(TRIANGLE_INDICES, 6, nullptr));
+    assert(sizeof(TRIANGLE_INDICES) == 6);
     engine->destroy(vb);
     Engine::destroy(&engine);
 #endif
