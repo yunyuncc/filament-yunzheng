@@ -5,6 +5,8 @@
 #include <filament/VertexBuffer.h>
 #include <filament/IndexBuffer.h>
 #include <filament/Material.h>
+#include <filament/Renderer.h>
+#include <filament/RenderableManager.h>
 #include "resources/filamentapp.h"
 #include <utils/Entity.h>
 #include <utils/EntityManager.h>
@@ -262,7 +264,18 @@ int main()
                     .build(*engine);
     utils::Entity renderable = EntityManager::get().create();
     
+    RenderableManager::Builder(1)
+            .boundingBox({{-1,-1,-1},{1,1,1}})
+            .material(0, mat->getDefaultInstance())
+            .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, 3)
+            .culling(false)
+            .receiveShadows(false)
+            .castShadows(false)
+            .build(*engine, renderable);
+
+    Renderer* render = engine->createRenderer();
     
+    engine->destroy(renderable);
     engine->destroy(mat);
     engine->destroy(ib);
     engine->destroy(vb);
