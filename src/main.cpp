@@ -221,8 +221,6 @@ int main()
 #if 0
     testBitset();
 #endif
-
-#if 1
     struct Vertex {
         filament::math::float2 position;
         uint32_t color;
@@ -233,6 +231,9 @@ int main()
         {{cos(M_PI * 4 / 3), sin(M_PI * 4 / 3)}, 0xff0000ffu},
     };
     static constexpr uint16_t TRIANGLE_INDICES[3] = { 0, 1, 2 };
+#if 0
+
+
     Engine* engine = Engine::create();
 
     //申请顶点缓冲
@@ -258,15 +259,38 @@ int main()
     Engine::destroy(&engine);
 #endif
 
-#if 0
+#if 1
     Config config;
     config.title = "yunzheng_demo";
     App app;
     auto setup = [&app](Engine* engine, View* view, Scene* scene) {
+        //view 是 主视图
         cout << "setup" << endl;
         //场景内设置一个天空盒的颜色，也就设置了背景色
         app.skybox = Skybox::Builder().color({0.1, 0.125, 0.5, 1.0}).build(*engine);
         scene->setSkybox(app.skybox);
+
+        // 创建三角形的顶点缓冲区
+        app.vb = VertexBuffer::Builder()
+                .vertexCount(3)
+                .bufferCount(1)
+                .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 12)
+                .attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::UBYTE4, 8, 12)
+                .normalized(VertexAttribute::COLOR)
+                .build(*engine);
+        // 将数据拷贝到顶点缓冲区
+        app.vb->setBufferAt(*engine, 0,
+                VertexBuffer::BufferDescriptor(TRIANGLE_VERTICES, 36, nullptr));
+        
+        // 创建三角形的索引缓冲区
+        app.ib = IndexBuffer::Builder()
+                .indexCount(3)
+                .bufferType(IndexBuffer::IndexType::USHORT)
+                .build(*engine);
+        // 设置索引缓冲区的数据
+        app.ib->setBuffer(*engine,
+                IndexBuffer::BufferDescriptor(TRIANGLE_INDICES, 6, nullptr));
+        
     };
     auto cleanup = [&app](Engine* engine, View*, Scene*) {
         cout << "cleanup" << endl;   

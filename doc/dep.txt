@@ -166,3 +166,25 @@ Builder 构建者模式
     避免了错误的参数导致的bug。
 -------------------------------------------------------
 
+FilamentApp
+    mScene //全局只有一个场景
+
+Window
+    Window 是 FilamentApp 的友元
+    创建一个SDL_Window* mWindow
+    根据SDL_Window 获取 nativeWindow
+    创建FilamentApp 里面的 Engine
+    从Engine获取 mBackend
+    根据 nativeWindow 创建 mSwapChain，交换链 是 window的成员
+    创建 mRenderer ,渲染器也是 window的成员
+    创建3个 Camera 并设置camera的曝光
+
+    创建视图，默认情况下只有主视图和UI视图 CView
+    创建相机控制器
+    给主视图设置相机和相机控制器
+    配置相机
+    设置相机的朝向
+
+
+
+
