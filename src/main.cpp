@@ -4,6 +4,10 @@
 #include <filament/Scene.h>
 #include <filament/VertexBuffer.h>
 #include <filament/IndexBuffer.h>
+#include <filament/Material.h>
+#include <filament/Renderer.h>
+#include <filament/RenderableManager.h>
+#include "resources/filamentapp.h"
 #include <utils/Entity.h>
 #include <utils/EntityManager.h>
 #include <utils/NameComponentManager.h>
@@ -17,6 +21,7 @@
 using namespace std;
 
 using namespace filament;
+using utils::Entity;
 
 using HeapAllocatorArena = utils::Arena<
         utils::HeapAllocator,
@@ -28,9 +33,9 @@ struct App {
     IndexBuffer* ib;
     Material* mat;
     Camera* cam;
-    //Entity camera;
+    Entity camera;
     Skybox* skybox;
-    //Entity renderable;
+    Entity renderable;
 };
 using namespace utils;
 
@@ -255,7 +260,28 @@ int main()
     ib->setBuffer(*engine,
                 IndexBuffer::BufferDescriptor(TRIANGLE_INDICES, 6, nullptr));
     assert(sizeof(TRIANGLE_INDICES) == 6);
+
+    Material* mat = Material::Builder()
+                    .package(FILAMENTAPP_BAKEDCOLOR_DATA, FILAMENTAPP_BAKEDCOLOR_SIZE)
+                    .build(*engine);
+    utils::Entity renderable = EntityManager::get().create();
+    
+    RenderableManager::Builder(1)
+            .boundingBox({{-1,-1,-1},{1,1,1}})
+            .material(0, mat->getDefaultInstance())
+            .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, 3)
+            .culling(false)
+            .receiveShadows(false)
+            .castShadows(false)
+            .build(*engine, renderable);
+
+    Renderer* render = engine->createRenderer();
+    
+    engine->destroy(renderable);
+    engine->destroy(mat);
+    engine->destroy(ib);
     engine->destroy(vb);
+
     Engine::destroy(&engine);
 #endif
 
@@ -290,7 +316,23 @@ int main()
         // 设置索引缓冲区的数据
         app.ib->setBuffer(*engine,
                 IndexBuffer::BufferDescriptor(TRIANGLE_INDICES, 6, nullptr));
+        app.mat = Material::Builder()
+                .package(FILAMENTAPP_BAKEDCOLOR_DATA, FILAMENTAPP_BAKEDCOLOR_SIZE)
+                .build(*engine);
         
+        // 创建场景内唯一的一个可渲染对象，也就是三角形
+        app.renderable = EntityManager::get().create();
+        RenderableManager::Builder(1)
+                .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
+                .material(0, app.mat->getDefaultInstance())
+                .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, app.vb, app.ib, 0, 3)
+                .culling(false)
+                .receiveShadows(false)
+                .castShadows(false)
+                .build(*engine, app.renderable);
+
+        // 将可渲染对象添加到场景当中
+        scene->addEntity(app.renderable);
     };
     auto cleanup = [&app](Engine* engine, View*, Scene*) {
         cout << "cleanup" << endl;   

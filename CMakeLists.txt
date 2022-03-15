@@ -108,5 +108,6 @@ target_link_libraries(${TARGET} PRIVATE ${FRAMEWORKS})
 target_link_libraries(${TARGET} PRIVATE ${FILAMENT_LIBS})
 target_link_libraries(${TARGET} PRIVATE filamentapp)
 target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/filamentapp/include)
+target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/filamentapp/generated)
 
 
