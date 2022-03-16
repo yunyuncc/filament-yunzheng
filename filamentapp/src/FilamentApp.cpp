@@ -79,78 +79,47 @@ View* FilamentApp::getGuiView() const noexcept {
     return mImGuiHelper->getView();
 }
 
-void FilamentApp::run(const Config& config, SetupCallback setupCallback,
-        CleanupCallback cleanupCallback, ImGuiCallback imguiCallback,
-        PreRenderCallback preRender, PostRenderCallback postRender,
-        size_t width, size_t height) {
-    mWindowTitle = config.title;
-    std::unique_ptr<FilamentApp::Window> window(
-            new FilamentApp::Window(this, config, config.title, width, height));
+void FilamentApp::handleImGUI(Window* window, ImGuiCallback imguiCallback, bool headless, float timeStep, bool* mousePressed) {
+        // Populate the UI scene, regardless of whether Filament wants to a skip frame. We should
+        // always let ImGui generate a command list; if it skips a frame it'll destroy its widgets.
+        if (mImGuiHelper) {
 
-    mDepthMaterial = Material::Builder()
-            .package(FILAMENTAPP_DEPTHVISUALIZER_DATA, FILAMENTAPP_DEPTHVISUALIZER_SIZE)
-            .build(*mEngine);
+            // Inform ImGui of the current window size in case it was resized.
+            if (headless) {
+                mImGuiHelper->setDisplaySize(window->mWidth, window->mHeight);
+            } else {
+                int windowWidth, windowHeight;
+                int displayWidth, displayHeight;
+                SDL_GetWindowSize(window->mWindow, &windowWidth, &windowHeight);
+                SDL_GL_GetDrawableSize(window->mWindow, &displayWidth, &displayHeight);
+                mImGuiHelper->setDisplaySize(windowWidth, windowHeight,
+                        windowWidth > 0 ? ((float)displayWidth / windowWidth) : 0,
+                        displayHeight > 0 ? ((float)displayHeight / windowHeight) : 0);
+            }
 
-    mDepthMI = mDepthMaterial->createInstance();
+            // Setup mouse inputs (we already got mouse wheel, keyboard keys & characters
+            // from our event handler)
+            ImGuiIO& io = ImGui::GetIO();
+            int mx, my;
+            Uint32 buttons = SDL_GetMouseState(&mx, &my);
+            io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+            io.MouseDown[0] = mousePressed[0] || (buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
+            io.MouseDown[1] = mousePressed[1] || (buttons & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
+            io.MouseDown[2] = mousePressed[2] || (buttons & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;
+            mousePressed[0] = mousePressed[1] = mousePressed[2] = false;
 
-    mDefaultMaterial = Material::Builder()
-            .package(FILAMENTAPP_AIDEFAULTMAT_DATA, FILAMENTAPP_AIDEFAULTMAT_SIZE)
-            .build(*mEngine);
+            // TODO: Update to a newer SDL and use SDL_CaptureMouse() to retrieve mouse coordinates
+            // outside of the client area; see the imgui SDL example.
+            if ((SDL_GetWindowFlags(window->mWindow) & SDL_WINDOW_INPUT_FOCUS) != 0) {
+                io.MousePos = ImVec2((float)mx, (float)my);
+            }
 
-    mTransparentMaterial = Material::Builder()
-            .package(FILAMENTAPP_TRANSPARENTCOLOR_DATA, FILAMENTAPP_TRANSPARENTCOLOR_SIZE)
-            .build(*mEngine);
-
-    std::unique_ptr<Cube> cameraCube(new Cube(*mEngine, mTransparentMaterial, {1,0,0}));
-    // we can't cull the light-frustum because it's not applied a rigid transform
-    // and currently, filament assumes that for culling
-    std::unique_ptr<Cube> lightmapCube(new Cube(*mEngine, mTransparentMaterial, {0,1,0}, false));
-    mScene = mEngine->createScene();
-
-    window->mMainView->getView()->setVisibleLayers(0x4, 0x4);
-
-    if (config.splitView) {
-        auto& rcm = mEngine->getRenderableManager();
-
-        rcm.setLayerMask(rcm.getInstance(cameraCube->getSolidRenderable()), 0x3, 0x2);
-        rcm.setLayerMask(rcm.getInstance(cameraCube->getWireFrameRenderable()), 0x3, 0x2);
-
-        rcm.setLayerMask(rcm.getInstance(lightmapCube->getSolidRenderable()), 0x3, 0x2);
-        rcm.setLayerMask(rcm.getInstance(lightmapCube->getWireFrameRenderable()), 0x3, 0x2);
-
-        // Create the camera mesh
-        mScene->addEntity(cameraCube->getWireFrameRenderable());
-        mScene->addEntity(cameraCube->getSolidRenderable());
-
-        mScene->addEntity(lightmapCube->getWireFrameRenderable());
-        mScene->addEntity(lightmapCube->getSolidRenderable());
-
-        window->mDepthView->getView()->setVisibleLayers(0x4, 0x4);
-        window->mGodView->getView()->setVisibleLayers(0x6, 0x6);
-        window->mOrthoView->getView()->setVisibleLayers(0x6, 0x6);
-
-        // only preserve the color buffer for additional views; depth and stencil can be discarded.
-        window->mDepthView->getView()->setShadowingEnabled(false);
-        window->mGodView->getView()->setShadowingEnabled(false);
-        window->mOrthoView->getView()->setShadowingEnabled(false);
-    }
-
-    loadDirt(config);
-    loadIBL(config);
-    if (mIBL != nullptr) {
-        mIBL->getSkybox()->setLayerMask(0x7, 0x4);
-        mScene->setSkybox(mIBL->getSkybox());
-        mScene->setIndirectLight(mIBL->getIndirectLight());
-    }
-
-    for (auto& view : window->mViews) {
-        if (view.get() != window->mUiView) {
-            view->getView()->setScene(mScene);
+            // Populate the UI Scene.
+            mImGuiHelper->render(timeStep, imguiCallback);
         }
-    }
+}
 
-    setupCallback(mEngine, window->mMainView->getView(), mScene);
-
+void FilamentApp::setupImGUI(Window* window, ImGuiCallback imguiCallback) {
     if (imguiCallback) {
         mImGuiHelper = std::make_unique<ImGuiHelper>(mEngine, window->mUiView->getView(),
             getRootAssetsPath() + "assets/fonts/Roboto-Medium.ttf");
@@ -190,35 +159,9 @@ void FilamentApp::run(const Config& config, SetupCallback setupCallback,
         };
         io.ClipboardUserData = nullptr;
     }
+}
 
-    bool mousePressed[3] = { false };
-
-    int sidebarWidth = mSidebarWidth;
-    float cameraFocalLength = mCameraFocalLength;
-
-    SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
-    SDL_Window* sdlWindow = window->getSDLWindow();
-
-    while (!mClosed) {
-        if (mWindowTitle != SDL_GetWindowTitle(sdlWindow)) {
-            SDL_SetWindowTitle(sdlWindow, mWindowTitle.c_str());
-        }
-
-        if (mSidebarWidth != sidebarWidth || mCameraFocalLength != cameraFocalLength) {
-            window->configureCamerasForWindow();
-            sidebarWidth = mSidebarWidth;
-            cameraFocalLength = mCameraFocalLength;
-        }
-
-        if (!UTILS_HAS_THREADING) {
-            mEngine->execute();
-        }
-
-        // Allow the app to animate the scene if desired.
-        if (mAnimation) {
-            double now = (double) SDL_GetPerformanceCounter() / SDL_GetPerformanceFrequency();
-            mAnimation(mEngine, window->mMainView->getView(), now);
-        }
+void FilamentApp::handleEvent(Window* window, bool* mousePressed) {
 
         // Loop over fresh events twice: first stash them and let ImGui process them, then allow
         // the app to process the stashed events. This is done because ImGui might wish to block
@@ -325,6 +268,116 @@ void FilamentApp::run(const Config& config, SetupCallback setupCallback,
             }
         }
 
+}
+
+void FilamentApp::setupSplitView(Window* window, Cube* cameraCube, Cube* lightmapCube, bool splitView) {
+    if (splitView) {
+        auto& rcm = mEngine->getRenderableManager();
+
+        rcm.setLayerMask(rcm.getInstance(cameraCube->getSolidRenderable()), 0x3, 0x2);
+        rcm.setLayerMask(rcm.getInstance(cameraCube->getWireFrameRenderable()), 0x3, 0x2);
+
+        rcm.setLayerMask(rcm.getInstance(lightmapCube->getSolidRenderable()), 0x3, 0x2);
+        rcm.setLayerMask(rcm.getInstance(lightmapCube->getWireFrameRenderable()), 0x3, 0x2);
+
+        // Create the camera mesh
+        mScene->addEntity(cameraCube->getWireFrameRenderable());
+        mScene->addEntity(cameraCube->getSolidRenderable());
+
+        mScene->addEntity(lightmapCube->getWireFrameRenderable());
+        mScene->addEntity(lightmapCube->getSolidRenderable());
+
+        window->mDepthView->getView()->setVisibleLayers(0x4, 0x4);
+        window->mGodView->getView()->setVisibleLayers(0x6, 0x6);
+        window->mOrthoView->getView()->setVisibleLayers(0x6, 0x6);
+
+        // only preserve the color buffer for additional views; depth and stencil can be discarded.
+        window->mDepthView->getView()->setShadowingEnabled(false);
+        window->mGodView->getView()->setShadowingEnabled(false);
+        window->mOrthoView->getView()->setShadowingEnabled(false);
+    }
+}
+
+void FilamentApp::run(const Config& config, SetupCallback setupCallback,
+        CleanupCallback cleanupCallback, ImGuiCallback imguiCallback,
+        PreRenderCallback preRender, PostRenderCallback postRender,
+        size_t width, size_t height) {
+    mWindowTitle = config.title;
+    std::unique_ptr<FilamentApp::Window> window(
+            new FilamentApp::Window(this, config, config.title, width, height));
+
+    mDepthMaterial = Material::Builder()
+            .package(FILAMENTAPP_DEPTHVISUALIZER_DATA, FILAMENTAPP_DEPTHVISUALIZER_SIZE)
+            .build(*mEngine);
+
+    mDepthMI = mDepthMaterial->createInstance();
+
+    mDefaultMaterial = Material::Builder()
+            .package(FILAMENTAPP_AIDEFAULTMAT_DATA, FILAMENTAPP_AIDEFAULTMAT_SIZE)
+            .build(*mEngine);
+
+    mTransparentMaterial = Material::Builder()
+            .package(FILAMENTAPP_TRANSPARENTCOLOR_DATA, FILAMENTAPP_TRANSPARENTCOLOR_SIZE)
+            .build(*mEngine);
+
+    std::unique_ptr<Cube> cameraCube(new Cube(*mEngine, mTransparentMaterial, {1,0,0}));
+    // we can't cull the light-frustum because it's not applied a rigid transform
+    // and currently, filament assumes that for culling
+    std::unique_ptr<Cube> lightmapCube(new Cube(*mEngine, mTransparentMaterial, {0,1,0}, false));
+    mScene = mEngine->createScene();
+
+    window->mMainView->getView()->setVisibleLayers(0x4, 0x4);
+
+    setupSplitView(window.get(), cameraCube.get(), lightmapCube.get(), config.splitView);
+
+    loadDirt(config);
+    loadIBL(config);
+    if (mIBL != nullptr) {
+        mIBL->getSkybox()->setLayerMask(0x7, 0x4);
+        mScene->setSkybox(mIBL->getSkybox());
+        mScene->setIndirectLight(mIBL->getIndirectLight());
+    }
+
+    for (auto& view : window->mViews) {
+        if (view.get() != window->mUiView) {
+            view->getView()->setScene(mScene);
+        }
+    }
+
+    setupCallback(mEngine, window->mMainView->getView(), mScene);
+
+    setupImGUI(window.get(), imguiCallback);
+
+    bool mousePressed[3] = { false };
+
+    int sidebarWidth = mSidebarWidth;
+    float cameraFocalLength = mCameraFocalLength;
+
+    SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+    SDL_Window* sdlWindow = window->getSDLWindow();
+    if (mWindowTitle != SDL_GetWindowTitle(sdlWindow)) {
+        SDL_SetWindowTitle(sdlWindow, mWindowTitle.c_str());
+    }
+    while (!mClosed) {
+
+
+        if (mSidebarWidth != sidebarWidth || mCameraFocalLength != cameraFocalLength) {
+            window->configureCamerasForWindow();
+            sidebarWidth = mSidebarWidth;
+            cameraFocalLength = mCameraFocalLength;
+        }
+
+        if (!UTILS_HAS_THREADING) {
+            mEngine->execute();
+        }
+
+        // Allow the app to animate the scene if desired.
+        if (mAnimation) {
+            double now = (double) SDL_GetPerformanceCounter() / SDL_GetPerformanceFrequency();
+            mAnimation(mEngine, window->mMainView->getView(), now);
+        }
+        handleEvent(window.get(), mousePressed);
+
         // Calculate the time step.
         static Uint64 frequency = SDL_GetPerformanceFrequency();
         Uint64 now = SDL_GetPerformanceCounter();
@@ -332,43 +385,7 @@ void FilamentApp::run(const Config& config, SetupCallback setupCallback,
                 (float)(1.0f / 60.0f);
         mTime = now;
 
-        // Populate the UI scene, regardless of whether Filament wants to a skip frame. We should
-        // always let ImGui generate a command list; if it skips a frame it'll destroy its widgets.
-        if (mImGuiHelper) {
-
-            // Inform ImGui of the current window size in case it was resized.
-            if (config.headless) {
-                mImGuiHelper->setDisplaySize(window->mWidth, window->mHeight);
-            } else {
-                int windowWidth, windowHeight;
-                int displayWidth, displayHeight;
-                SDL_GetWindowSize(window->mWindow, &windowWidth, &windowHeight);
-                SDL_GL_GetDrawableSize(window->mWindow, &displayWidth, &displayHeight);
-                mImGuiHelper->setDisplaySize(windowWidth, windowHeight,
-                        windowWidth > 0 ? ((float)displayWidth / windowWidth) : 0,
-                        displayHeight > 0 ? ((float)displayHeight / windowHeight) : 0);
-            }
-
-            // Setup mouse inputs (we already got mouse wheel, keyboard keys & characters
-            // from our event handler)
-            ImGuiIO& io = ImGui::GetIO();
-            int mx, my;
-            Uint32 buttons = SDL_GetMouseState(&mx, &my);
-            io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
-            io.MouseDown[0] = mousePressed[0] || (buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
-            io.MouseDown[1] = mousePressed[1] || (buttons & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
-            io.MouseDown[2] = mousePressed[2] || (buttons & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;
-            mousePressed[0] = mousePressed[1] = mousePressed[2] = false;
-
-            // TODO: Update to a newer SDL and use SDL_CaptureMouse() to retrieve mouse coordinates
-            // outside of the client area; see the imgui SDL example.
-            if ((SDL_GetWindowFlags(window->mWindow) & SDL_WINDOW_INPUT_FOCUS) != 0) {
-                io.MousePos = ImVec2((float)mx, (float)my);
-            }
-
-            // Populate the UI Scene.
-            mImGuiHelper->render(timeStep, imguiCallback);
-        }
+        handleImGUI(window.get(), imguiCallback, config.headless, timeStep, mousePressed);
 
         // Update the camera manipulators for each view.
         for (auto const& view : window->mViews) {

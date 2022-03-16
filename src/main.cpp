@@ -287,6 +287,7 @@ int main()
 
 #if 1
     Config config;
+    config.splitView = true;
     config.title = "yunzheng_demo";
     App app;
     auto setup = [&app](Engine* engine, View* view, Scene* scene) {
@@ -336,6 +337,11 @@ int main()
     };
     auto cleanup = [&app](Engine* engine, View*, Scene*) {
         cout << "cleanup" << endl;   
+        
+        engine->destroy(app.renderable);
+        engine->destroy(app.mat);
+        engine->destroy(app.ib);
+        engine->destroy(app.vb);
         engine->destroy(app.skybox); 
     };
 

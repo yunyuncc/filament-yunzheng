@@ -36,6 +36,7 @@
 #include "Config.h"
 #include "IBL.h"
 
+class Cube;
 namespace filament {
 class Renderer;
 class Scene;
@@ -110,6 +111,7 @@ public:
 
 private:
     FilamentApp();
+    
 
     using CameraManipulator = filament::camutils::Manipulator<float>;
 
@@ -215,6 +217,10 @@ private:
 
     friend class Window;
     void initSDL();
+    void setupImGUI(Window* window, ImGuiCallback imguiCallback);
+    void handleImGUI(Window* window, ImGuiCallback imguiCallback, bool headless, float timeStep, bool* mousePressed);
+    void handleEvent(Window* window, bool* mousePressed);
+    void setupSplitView(Window* window, Cube* cameraCube, Cube* lightmapCube, bool splitView);
 
     void loadIBL(const Config& config);
     void loadDirt(const Config& config);
