@@ -359,9 +359,8 @@ void FilamentApp::run(const Config& config, SetupCallback setupCallback,
         SDL_SetWindowTitle(sdlWindow, mWindowTitle.c_str());
     }
     while (!mClosed) {
-
-
         if (mSidebarWidth != sidebarWidth || mCameraFocalLength != cameraFocalLength) {
+            throw std::runtime_error("not support change cameraFocal or sidebarWidth");
             window->configureCamerasForWindow();
             sidebarWidth = mSidebarWidth;
             cameraFocalLength = mCameraFocalLength;
@@ -381,9 +380,14 @@ void FilamentApp::run(const Config& config, SetupCallback setupCallback,
         // Calculate the time step.
         static Uint64 frequency = SDL_GetPerformanceFrequency();
         Uint64 now = SDL_GetPerformanceCounter();
+
+        //上一帧到这一帧的时间间隔
         const float timeStep = mTime > 0 ? (float)((double)(now - mTime) / frequency) :
                 (float)(1.0f / 60.0f);
         mTime = now;
+        using std::cout;
+        using std::endl;
+        //cout << "timeStep:" << timeStep << " now_PerformanceCounter:" << now << " frequency:" << frequency << " now:" << (double)now/frequency << endl;
 
         handleImGUI(window.get(), imguiCallback, config.headless, timeStep, mousePressed);
 
