@@ -71,7 +71,7 @@ Cube::Cube(Engine& engine, filament::Material const* material, float3 linearColo
         mMaterialInstanceSolid->setParameter("color", RgbaType::LINEAR,
                 LinearColorA{linearColor.r, linearColor.g, linearColor.b, 0.05f});
         mMaterialInstanceWireFrame->setParameter("color", RgbaType::LINEAR,
-                LinearColorA{linearColor.r, linearColor.g, linearColor.b, 0.25f});
+                LinearColorA{linearColor.r, linearColor.g, linearColor.b, 0.8f});
     }
 
     mVertexBuffer->setBufferAt(engine, 0,

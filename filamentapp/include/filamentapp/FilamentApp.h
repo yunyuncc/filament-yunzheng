@@ -121,6 +121,7 @@ private:
     public:
         CView(filament::Renderer& renderer, std::string name);
         virtual ~CView();
+        std::string name() const { return mName; }
 
         void setCameraManipulator(CameraManipulator* cm);
         void setViewport(filament::Viewport const& viewport);
@@ -217,11 +218,13 @@ private:
 
     friend class Window;
     void initSDL();
-    void setupImGUI(Window* window, ImGuiCallback imguiCallback);
-    void handleImGUI(Window* window, ImGuiCallback imguiCallback, bool headless, float timeStep, bool* mousePressed);
+    void setupImGui(Window* window, ImGuiCallback imguiCallback);
+    void handleImGui(Window* window, ImGuiCallback imguiCallback, bool headless, float timeStep, bool* mousePressed);
+    void handleEventByImGui(bool* mousePressed, SDL_Event* event);
+    void handleEventByAPP(Window* window, const SDL_Event& event);
     void handleEvent(Window* window, bool* mousePressed);
     void setupSplitView(Window* window, Cube* cameraCube, Cube* lightmapCube, bool splitView);
-
+    
     void loadIBL(const Config& config);
     void loadDirt(const Config& config);
 

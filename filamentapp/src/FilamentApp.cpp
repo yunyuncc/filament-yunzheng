@@ -79,7 +79,7 @@ View* FilamentApp::getGuiView() const noexcept {
     return mImGuiHelper->getView();
 }
 
-void FilamentApp::handleImGUI(Window* window, ImGuiCallback imguiCallback, bool headless, float timeStep, bool* mousePressed) {
+void FilamentApp::handleImGui(Window* window, ImGuiCallback imguiCallback, bool headless, float timeStep, bool* mousePressed) {
         // Populate the UI scene, regardless of whether Filament wants to a skip frame. We should
         // always let ImGui generate a command list; if it skips a frame it'll destroy its widgets.
         if (mImGuiHelper) {
@@ -119,7 +119,7 @@ void FilamentApp::handleImGUI(Window* window, ImGuiCallback imguiCallback, bool 
         }
 }
 
-void FilamentApp::setupImGUI(Window* window, ImGuiCallback imguiCallback) {
+void FilamentApp::setupImGui(Window* window, ImGuiCallback imguiCallback) {
     if (imguiCallback) {
         mImGuiHelper = std::make_unique<ImGuiHelper>(mEngine, window->mUiView->getView(),
             getRootAssetsPath() + "assets/fonts/Roboto-Medium.ttf");
@@ -160,114 +160,121 @@ void FilamentApp::setupImGUI(Window* window, ImGuiCallback imguiCallback) {
         io.ClipboardUserData = nullptr;
     }
 }
-
-void FilamentApp::handleEvent(Window* window, bool* mousePressed) {
-
-        // Loop over fresh events twice: first stash them and let ImGui process them, then allow
-        // the app to process the stashed events. This is done because ImGui might wish to block
-        // certain events from the app (e.g., when dragging the mouse over an obscuring window).
-        constexpr int kMaxEvents = 16;
-        SDL_Event events[kMaxEvents];
-        int nevents = 0;
-        while (nevents < kMaxEvents && SDL_PollEvent(&events[nevents]) != 0) {
-            if (mImGuiHelper) {
-                ImGuiIO& io = ImGui::GetIO();
-                SDL_Event* event = &events[nevents];
-                switch (event->type) {
-                    case SDL_MOUSEWHEEL: {
-                        if (event->wheel.x > 0) io.MouseWheelH += 1;
-                        if (event->wheel.x < 0) io.MouseWheelH -= 1;
-                        if (event->wheel.y > 0) io.MouseWheel += 1;
-                        if (event->wheel.y < 0) io.MouseWheel -= 1;
-                        break;
-                    }
-                    case SDL_MOUSEBUTTONDOWN: {
-                        if (event->button.button == SDL_BUTTON_LEFT) mousePressed[0] = true;
-                        if (event->button.button == SDL_BUTTON_RIGHT) mousePressed[1] = true;
-                        if (event->button.button == SDL_BUTTON_MIDDLE) mousePressed[2] = true;
-                        break;
-                    }
-                    case SDL_TEXTINPUT: {
-                        io.AddInputCharactersUTF8(event->text.text);
-                        break;
-                    }
-                    case SDL_KEYDOWN:
-                    case SDL_KEYUP: {
-                        int key = event->key.keysym.scancode;
-                        IM_ASSERT(key >= 0 && key < IM_ARRAYSIZE(io.KeysDown));
-                        io.KeysDown[key] = (event->type == SDL_KEYDOWN);
-                        io.KeyShift = ((SDL_GetModState() & KMOD_SHIFT) != 0);
-                        io.KeyAlt = ((SDL_GetModState() & KMOD_ALT) != 0);
-                        io.KeyCtrl = ((SDL_GetModState() & KMOD_CTRL) != 0);
-                        io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
-                        break;
-                    }
-                }
-            }
-            nevents++;
+void FilamentApp::handleEventByImGui(bool* mousePressed, SDL_Event* event) {
+    if (!mImGuiHelper) {
+        return;
+    }
+    ImGuiIO& io = ImGui::GetIO();
+    switch (event->type) {
+        case SDL_MOUSEWHEEL: {
+            if (event->wheel.x > 0) io.MouseWheelH += 1;
+            if (event->wheel.x < 0) io.MouseWheelH -= 1;
+            if (event->wheel.y > 0) io.MouseWheel += 1;
+            if (event->wheel.y < 0) io.MouseWheel -= 1;
+            break;
         }
+        case SDL_MOUSEBUTTONDOWN: {
+            if (event->button.button == SDL_BUTTON_LEFT) mousePressed[0] = true;
+            if (event->button.button == SDL_BUTTON_RIGHT) mousePressed[1] = true;
+            if (event->button.button == SDL_BUTTON_MIDDLE) mousePressed[2] = true;
+            break;
+        }
+        case SDL_TEXTINPUT: {
+            io.AddInputCharactersUTF8(event->text.text);
+            break;
+        }
+        case SDL_KEYDOWN:
+        case SDL_KEYUP: {
+            int key = event->key.keysym.scancode;
+            IM_ASSERT(key >= 0 && key < IM_ARRAYSIZE(io.KeysDown));
+            io.KeysDown[key] = (event->type == SDL_KEYDOWN);
+            io.KeyShift = ((SDL_GetModState() & KMOD_SHIFT) != 0);
+            io.KeyAlt = ((SDL_GetModState() & KMOD_ALT) != 0);
+            io.KeyCtrl = ((SDL_GetModState() & KMOD_CTRL) != 0);
+            io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
+            break;
+        }
+    }
+    
+}
 
-        // Now, loop over the events a second time for app-side processing.
-        for (int i = 0; i < nevents; i++) {
-            const SDL_Event& event = events[i];
-            ImGuiIO* io = mImGuiHelper ? &ImGui::GetIO() : nullptr;
-            switch (event.type) {
-                case SDL_QUIT:
-                    mClosed = true;
-                    break;
-                case SDL_KEYDOWN:
-                    if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
-                        mClosed = true;
-                    }
+void FilamentApp::handleEventByAPP(Window* window, const SDL_Event& event) {
+    ImGuiIO* io = mImGuiHelper ? &ImGui::GetIO() : nullptr;
+    switch (event.type) {
+        case SDL_QUIT:
+            mClosed = true;
+            break;
+        case SDL_KEYDOWN:
+            if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+                mClosed = true;
+            }
 #ifndef NDEBUG
-                    if (event.key.keysym.scancode == SDL_SCANCODE_PRINTSCREEN) {
-                        DebugRegistry& debug = mEngine->getDebugRegistry();
-                        bool* captureFrame =
-                                debug.getPropertyAddress<bool>("d.renderer.doFrameCapture");
-                        *captureFrame = true;
-                    }
+            if (event.key.keysym.scancode == SDL_SCANCODE_PRINTSCREEN) {
+                DebugRegistry& debug = mEngine->getDebugRegistry();
+                bool* captureFrame =
+                        debug.getPropertyAddress<bool>("d.renderer.doFrameCapture");
+                *captureFrame = true;
+            }
 #endif
-                    window->keyDown(event.key.keysym.scancode);
-                    break;
-                case SDL_KEYUP:
-                    window->keyUp(event.key.keysym.scancode);
-                    break;
-                case SDL_MOUSEWHEEL:
-                    if (!io || !io->WantCaptureMouse)
-                        window->mouseWheel(event.wheel.y);
-                    break;
-                case SDL_MOUSEBUTTONDOWN:
-                    if (!io || !io->WantCaptureMouse)
-                        window->mouseDown(event.button.button, event.button.x, event.button.y);
-                    break;
-                case SDL_MOUSEBUTTONUP:
-                    if (!io || !io->WantCaptureMouse)
-                        window->mouseUp(event.button.x, event.button.y);
-                    break;
-                case SDL_MOUSEMOTION:
-                    if (!io || !io->WantCaptureMouse)
-                        window->mouseMoved(event.motion.x, event.motion.y);
-                    break;
-                case SDL_DROPFILE:
-                    if (mDropHandler) {
-                        mDropHandler(event.drop.file);
-                    }
-                    SDL_free(event.drop.file);
-                    break;
-                case SDL_WINDOWEVENT:
-                    switch (event.window.event) {
-                        case SDL_WINDOWEVENT_RESIZED:
-                            window->resize();
-                            break;
-                        default:
-                            break;
-                    }
+            window->keyDown(event.key.keysym.scancode);
+            break;
+        case SDL_KEYUP:
+            window->keyUp(event.key.keysym.scancode);
+            break;
+        case SDL_MOUSEWHEEL:
+            if (!io || !io->WantCaptureMouse)
+                window->mouseWheel(event.wheel.y);
+            break;
+        case SDL_MOUSEBUTTONDOWN:
+            if (!io || !io->WantCaptureMouse)
+                window->mouseDown(event.button.button, event.button.x, event.button.y);
+            break;
+        case SDL_MOUSEBUTTONUP:
+            if (!io || !io->WantCaptureMouse)
+                window->mouseUp(event.button.x, event.button.y);
+            break;
+        case SDL_MOUSEMOTION:
+            if (!io || !io->WantCaptureMouse)
+                window->mouseMoved(event.motion.x, event.motion.y);
+            break;
+        case SDL_DROPFILE:
+            if (mDropHandler) {
+                mDropHandler(event.drop.file);
+            }
+            SDL_free(event.drop.file);
+            break;
+        case SDL_WINDOWEVENT:
+            switch (event.window.event) {
+                case SDL_WINDOWEVENT_RESIZED:
+                    window->resize();
                     break;
                 default:
                     break;
             }
-        }
+            break;
+        default:
+            break;
+    }
+}
 
+void FilamentApp::handleEvent(Window* window, bool* mousePressed) {
+    // Loop over fresh events twice: first stash them and let ImGui process them, then allow
+    // the app to process the stashed events. This is done because ImGui might wish to block
+    // certain events from the app (e.g., when dragging the mouse over an obscuring window).
+    constexpr int kMaxEvents = 16;
+    SDL_Event events[kMaxEvents];
+    int nevents = 0;
+    while (nevents < kMaxEvents && SDL_PollEvent(&events[nevents]) != 0) {
+        SDL_Event* event = &events[nevents];
+        handleEventByImGui(mousePressed, event);
+        nevents++;
+    }
+
+    // Now, loop over the events a second time for app-side processing.
+    for (int i = 0; i < nevents; i++) {
+        const SDL_Event& event = events[i];
+        handleEventBySDL(window, event);
+    }
 }
 
 void FilamentApp::setupSplitView(Window* window, Cube* cameraCube, Cube* lightmapCube, bool splitView) {
@@ -337,16 +344,19 @@ void FilamentApp::run(const Config& config, SetupCallback setupCallback,
         mScene->setSkybox(mIBL->getSkybox());
         mScene->setIndirectLight(mIBL->getIndirectLight());
     }
-
+    using namespace std;
     for (auto& view : window->mViews) {
+        bool setScene = false;
         if (view.get() != window->mUiView) {
             view->getView()->setScene(mScene);
+            setScene = true;
         }
+        cout << "view : " << view->name() << " , setScene:" << setScene << endl;
     }
 
     setupCallback(mEngine, window->mMainView->getView(), mScene);
 
-    setupImGUI(window.get(), imguiCallback);
+    setupImGui(window.get(), imguiCallback);
 
     bool mousePressed[3] = { false };
 
@@ -389,7 +399,7 @@ void FilamentApp::run(const Config& config, SetupCallback setupCallback,
         using std::endl;
         //cout << "timeStep:" << timeStep << " now_PerformanceCounter:" << now << " frequency:" << frequency << " now:" << (double)now/frequency << endl;
 
-        handleImGUI(window.get(), imguiCallback, config.headless, timeStep, mousePressed);
+        handleImGui(window.get(), imguiCallback, config.headless, timeStep, mousePressed);
 
         // Update the camera manipulators for each view.
         for (auto const& view : window->mViews) {

@@ -206,3 +206,55 @@ Renderer
 -----------------
 View
 View包含渲染场景所需要的所有状态
+多个View可以共享一个场景
+View实例是一个内部缓存了很多数据的重对象
+一个View可以看作一个渲染通道
+--------------------
+CView
+将一个 View, Camera 和 CameraManipulator 绑定到一起
+通过CView将事件传递到对应的 CameraManipulator 中
+
+
+-------------------
+Camera
+相机代表观察场景的眼睛
+相机具有位置和方向，并控制 投影(projection) 和曝光(exposure)参数。
+
+dag{
+    FilamentApp     --own--> Scene
+    FilamentApp     --own--> Window
+    Window          --own--> Renderer
+    Window          --own--> SwapChain
+    Window          --own--> Camera
+    Window          --own--> CView
+    Window          --own--> CameraManipulator
+    CView           --own--> View
+    CView           --use--> Camera
+    CView           --use--> CameraManipulator
+    Renderer        --use--> View
+    Renderer        --use--> SwapChain
+    View            --use--> Scene
+    View            --use--> Camera
+    View            --use--> Viewport
+    View            --use--> RenderTarget
+    View            -> RenderingParameters
+}
+
+
+------------事件的传递------------
+UI 线程循环生产事件 
+    KEYDOWN
+    KEYUP
+    MOUSEWHEEL
+    MOUSEBUTTONDOWN
+    MOUSEBUTTONUP
+    MOUSEMOTION
+    WINDOWEVENT_RESIZED
+    ---
+    DROPFILE
+
+FilamentApp 实现事件分发函数 handleEventByAPP
+调用window 的事件处理函数
+window 内有多个 CView,判断当前事件分发到哪个CView中，将事件传递到CView
+CView 将事件分发给 CameraManipulator
+CameraManipulator 接收到事件后更新其内部的状态，不同的状态会在getLookAt的时候返回不同的Camera姿态
