@@ -121,8 +121,12 @@ void FilamentApp::handleImGui(Window* window, ImGuiCallback imguiCallback, bool 
 
 void FilamentApp::setupImGui(Window* window, ImGuiCallback imguiCallback) {
     if (imguiCallback) {
+        using namespace std;
+        cout << "getRootAssetsPath:" << getRootAssetsPath()+ "assets/fonts/Roboto-Medium.ttf" << endl;
         mImGuiHelper = std::make_unique<ImGuiHelper>(mEngine, window->mUiView->getView(),
             getRootAssetsPath() + "assets/fonts/Roboto-Medium.ttf");
+        
+        
         ImGuiIO& io = ImGui::GetIO();
         #ifdef WIN32
             SDL_SysWMinfo wmInfo;
@@ -273,7 +277,7 @@ void FilamentApp::handleEvent(Window* window, bool* mousePressed) {
     // Now, loop over the events a second time for app-side processing.
     for (int i = 0; i < nevents; i++) {
         const SDL_Event& event = events[i];
-        handleEventBySDL(window, event);
+        handleEventByAPP(window, event);
     }
 }
 

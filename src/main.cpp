@@ -15,28 +15,25 @@
 #include <utils/SingleInstanceComponentManager.h>
 #include <utils/Allocator.h>
 #include <utils/bitset.h>
+#include <utils/Path.h>
+#include <viewer/SimpleViewer.h>
+#include <image/LinearImage.h>
+#include <imageio/ImageDecoder.h>
 #include <cassert>
-
+#include <fstream>
 #include <iostream>
 using namespace std;
 
 using namespace filament;
 using utils::Entity;
+using namespace filament::viewer;
 
 using HeapAllocatorArena = utils::Arena<
         utils::HeapAllocator,
         utils::LockingPolicy::Mutex,
         utils::TrackingPolicy::DebugAndHighWatermark>;
 
-struct App {
-    VertexBuffer* vb;
-    IndexBuffer* ib;
-    Material* mat;
-    Camera* cam;
-    Entity camera;
-    Skybox* skybox;
-    Entity renderable;
-};
+
 using namespace utils;
 
 class MyListener: public EntityManager::Listener 
@@ -201,31 +198,17 @@ void testBitset()
     assert(s.all() == false);
     assert(s.any() == true);
 }
-int main()
-{
-#if 0
-    testEntityManager();
-    std::shared_ptr<NameComponentManager> names = std::make_shared<NameComponentManager>(EntityManager::get());
-#endif
 
-#if 0
-    testStructureOfArrays();
-#endif
-#if 0
-    testSingleInstanceComponentManager();
-#endif
-
-#if 0
-    testNameComponentManager();
-#endif
-
-#if 0
-    testAllocator();
-#endif
-
-#if 0
-    testBitset();
-#endif
+void test_triangle() {
+    struct App {
+        VertexBuffer* vb;
+        IndexBuffer* ib;
+        Material* mat;
+        Camera* cam;
+        Entity camera;
+        Skybox* skybox;
+        Entity renderable;
+    };
     struct Vertex {
         filament::math::float2 position;
         uint32_t color;
@@ -236,59 +219,12 @@ int main()
         {{cos(M_PI * 4 / 3), sin(M_PI * 4 / 3)}, 0xff0000ffu},
     };
     static constexpr uint16_t TRIANGLE_INDICES[3] = { 0, 1, 2 };
-#if 0
 
-
-    Engine* engine = Engine::create();
-
-    //申请顶点缓冲
-    VertexBuffer* vb = VertexBuffer::Builder()
-                .vertexCount(3)
-                .bufferCount(1)
-                .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 12)
-                .attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::UBYTE4, 8, 12)
-                .normalized(VertexAttribute::COLOR)
-                .build(*engine);
-    //设置顶点缓冲
-    vb->setBufferAt(*engine, 0,
-                VertexBuffer::BufferDescriptor(TRIANGLE_VERTICES, 36, nullptr));
-
-    IndexBuffer* ib = IndexBuffer::Builder()
-                .indexCount(3)
-                .bufferType(IndexBuffer::IndexType::USHORT)
-                .build(*engine);
-    ib->setBuffer(*engine,
-                IndexBuffer::BufferDescriptor(TRIANGLE_INDICES, 6, nullptr));
-    assert(sizeof(TRIANGLE_INDICES) == 6);
-
-    Material* mat = Material::Builder()
-                    .package(FILAMENTAPP_BAKEDCOLOR_DATA, FILAMENTAPP_BAKEDCOLOR_SIZE)
-                    .build(*engine);
-    utils::Entity renderable = EntityManager::get().create();
-    
-    RenderableManager::Builder(1)
-            .boundingBox({{-1,-1,-1},{1,1,1}})
-            .material(0, mat->getDefaultInstance())
-            .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, 3)
-            .culling(false)
-            .receiveShadows(false)
-            .castShadows(false)
-            .build(*engine, renderable);
-
-    Renderer* render = engine->createRenderer();
-    
-    engine->destroy(renderable);
-    engine->destroy(mat);
-    engine->destroy(ib);
-    engine->destroy(vb);
-
-    Engine::destroy(&engine);
-#endif
-
-#if 1
     Config config;
+    config.backend = filament::Engine::Backend::OPENGL;
     config.splitView = true;
     config.title = "yunzheng_demo";
+    
     App app;
     auto setup = [&app](Engine* engine, View* view, Scene* scene) {
         //view 是 主视图
@@ -347,6 +283,213 @@ int main()
     };
 
     FilamentApp::get().run(config, setup, cleanup);
+}
+namespace testImage{
+struct App {
+    Engine* engine;
+    SimpleViewer* viewer;
+    Config config;
+    Camera* mainCamera;
+
+    struct Scene{
+        Entity imageEntity;
+        VertexBuffer* imageVertexBuffer = nullptr;
+        IndexBuffer* imageIndexBuffer = nullptr;
+        Material* imageMaterial = nullptr;
+        Texture* imageTexture = nullptr;
+        Texture* defaultTexture = nullptr;
+        TextureSampler sampler;
+    } scene;
+    bool showImage = false;
+};
+}
+static void createImageRenderable(Engine* engine, Scene* scene, testImage::App& app) {
+    using filament::math::float4;
+    // ? 为什么一个三角形就能够放一张图片？
+    static constexpr float4 sFullScreenTriangleVertices[3] = {
+            { -1.0f, -1.0f, 1.0f, 1.0f },
+            {  3.0f, -1.0f, 1.0f, 1.0f },
+            { -1.0f,  3.0f, 1.0f, 1.0f }
+    };
+    static const uint16_t sFullScreenTriangleIndices[3] = { 0, 1, 2 };
+    auto& em = EntityManager::get();
+    Material* material = Material::Builder()
+        .package(FILAMENTAPP_IMAGE_DATA, FILAMENTAPP_IMAGE_SIZE)
+        .build(*engine);
+    VertexBuffer * vertexBuffer = VertexBuffer::Builder()
+        .vertexCount(3)
+        .bufferCount(1)
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT4, 0)
+        .build(*engine);
+    vertexBuffer->setBufferAt(*engine, 0, {sFullScreenTriangleVertices, sizeof(sFullScreenTriangleVertices)});
+
+    IndexBuffer* indexBuffer = IndexBuffer::Builder()
+        .indexCount(3)
+        .bufferType(IndexBuffer::IndexType::USHORT)
+        .build(*engine);
+    indexBuffer->setBuffer(*engine,
+        {sFullScreenTriangleIndices, sizeof(sFullScreenTriangleIndices)}
+    );
+    Entity imageEntity = em.create();
+    RenderableManager::Builder(1)
+        .boundingBox({{}, {1.0f, 1.0f, 1.0f}}) // ?
+        .material(0, material->getDefaultInstance())
+        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertexBuffer, indexBuffer, 0, 3)
+        .culling(false)
+        .build(*engine, imageEntity);
+    
+    scene->addEntity(imageEntity);
+    app.scene.imageEntity = imageEntity;
+    app.scene.imageVertexBuffer = vertexBuffer;
+    app.scene.imageIndexBuffer = indexBuffer;
+    app.scene.imageMaterial = material;
+
+    // 这个只有一个像素的纹理是干啥的 ？
+    Texture * texture = Texture::Builder()
+        .width(1)
+        .height(1)
+        .levels(1)
+        .format(Texture::InternalFormat::RGBA8)
+        .sampler(Texture::Sampler::SAMPLER_2D)
+        .build(*engine);
+    static uint32_t pixel = 0;
+    Texture::PixelBufferDescriptor buffer(&pixel, 4, Texture::Format::RGBA, Texture::Type::UBYTE);
+    texture->setImage(*engine, 0, std::move(buffer));
+    app.scene.defaultTexture = texture;
+}    
+static void loadImage(testImage::App& app, Engine* engine, Path filename) {
+    if(app.scene.imageTexture){
+        engine->destroy(app.scene.imageTexture);
+        app.scene.imageTexture = nullptr;
+    }
+    if(!filename.exists()){
+        std::cerr << "The input image does not exist: " << filename << std::endl;
+        return;
+    }
+    std::ifstream inputStream(filename, std::ios::binary);
+    using image::LinearImage;
+    using image::ImageDecoder;
+    LinearImage * image = new LinearImage(
+        ImageDecoder::decode(
+            inputStream, filename, ImageDecoder::ColorSpace::SRGB
+        )
+    );
+    if(!image->isValid()){
+        std::cerr << "The input image is invalid: " << filename << std::endl;
+        app.showImage = false;
+        return;
+    }
+    inputStream.close();
+
+    uint32_t channels = image->getChannels();
+    uint32_t w = image->getWidth();
+    uint32_t h = image->getHeight();
+    Texture* texture = Texture::Builder()
+        .width(w)
+        .height(h)
+        .levels(0xff)// ???
+        .format(channels == 3? Texture::InternalFormat::RGB16F : Texture::InternalFormat::RGBA16F)
+        .sampler(Texture::Sampler::SAMPLER_2D)
+        .build(*engine);
+    Texture::PixelBufferDescriptor::Callback freeCallback = [](void* buf, size_t, void* data) {
+        delete reinterpret_cast<LinearImage*>(data);
+    };
+    Texture::PixelBufferDescriptor buffer(
+        image->getPixelRef(),
+        size_t(w*h*channels*sizeof(float)),
+        channels == 3 ? Texture::Format::RGB : Texture::Format::RGBA,
+        Texture::Type::FLOAT,
+        freeCallback
+    );
+    texture->setImage(*engine, 0, std::move(buffer));
+    texture->generateMipmaps(*engine); // ??
+
+    app.scene.sampler.setMagFilter(TextureSampler::MagFilter::LINEAR);
+    app.scene.sampler.setMinFilter(TextureSampler::MinFilter::LINEAR_MIPMAP_LINEAR);
+    app.scene.sampler.setWrapModeS(TextureSampler::WrapMode::REPEAT);
+    app.scene.sampler.setWrapModeT(TextureSampler::WrapMode::REPEAT);
+    app.scene.imageTexture = texture;
+    app.showImage = true;
+}
+void test_image(int argc, char** argv) {
+    using namespace testImage;
+
+    App app;
+    app.config.backend = filament::Engine::Backend::OPENGL;
+    //Path filename = argv[1];
+    app.config.title = "Filament Image Viewer";
+
+    auto setup = [&](Engine*engine, View* view, Scene* scene){
+        app.engine = engine;
+        app.viewer = new SimpleViewer(engine, scene, view, 410);
+        app.viewer->getSettings().viewer.autoScaleEnabled = false;
+        app.viewer->getSettings().view.bloom.enabled = false;
+        app.viewer->getSettings().view.ssao.enabled = false;
+        app.viewer->getSettings().view.dithering = Dithering::NONE;
+        app.viewer->getSettings().view.antiAliasing = AntiAliasing::NONE;
+        createImageRenderable(engine, scene, app);
+    };
+
+    auto cleanup = [&app](Engine* engine, View*, Scene*) {
+        engine->destroy(app.scene.imageEntity);
+        engine->destroy(app.scene.imageVertexBuffer);
+        engine->destroy(app.scene.imageIndexBuffer);
+        engine->destroy(app.scene.imageMaterial);
+        engine->destroy(app.scene.imageTexture);
+        engine->destroy(app.scene.defaultTexture);
+        if(app.viewer) {
+            delete app.viewer;
+        }
+    };
+
+    auto gui = [&app](Engine* engine, View* view) {
+
+    };
+
+    auto preRender = [&app](Engine* engine, View* view, Scene* scene, Renderer* renderer) {
+
+    };
+
+    FilamentApp& filamentApp = FilamentApp::get();
+    filamentApp.setDropHandler([&](std::string path) {
+
+    });
+
+    filamentApp.run(app.config, setup, cleanup, gui, preRender);
+    return;
+}
+
+int main(int argc, char** argv)
+{
+#if 0
+    testEntityManager();
+    std::shared_ptr<NameComponentManager> names = std::make_shared<NameComponentManager>(EntityManager::get());
+#endif
+
+#if 0
+    testStructureOfArrays();
+#endif
+#if 0
+    testSingleInstanceComponentManager();
+#endif
+
+#if 0
+    testNameComponentManager();
+#endif
+
+#if 0
+    testAllocator();
+#endif
+
+#if 0
+    testBitset();
+#endif
+
+#if 0
+    test_triangle();
+#endif
+#if 1
+    test_image(argc, argv);
 #endif
     return 0;
 }

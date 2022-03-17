@@ -97,6 +97,10 @@ set(FILAMENT_LIBS
     ibl 
     matdbg 
     filamat
+    viewer
+    gltfio
+    gltfio_core
+    dracodec
 )
 add_subdirectory(filamentapp)
 

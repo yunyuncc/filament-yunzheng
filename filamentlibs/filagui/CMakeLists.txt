@@ -56,6 +56,12 @@ file(MAKE_DIRECTORY ${RESOURCE_DIR})
 
 get_resgen_vars(${RESOURCE_DIR} filagui_resources)
 
+message("gui RESGEN_HEADER :${RESGEN_HEADER}")
+message("gui RESGEN_SOURCE :${RESGEN_SOURCE}")
+message("gui RESGEN_FLAGS :${RESGEN_FLAGS}")
+message("gui RESGEN_SOURCE_FLAGS :${RESGEN_SOURCE_FLAGS}")
+message("gui RESGEN_OUTPUTS :${RESGEN_OUTPUTS}")
+
 add_custom_command(
         OUTPUT ${RESGEN_OUTPUTS}
         COMMAND resgen ${RESGEN_FLAGS} ${RESOURCE_BINS}
