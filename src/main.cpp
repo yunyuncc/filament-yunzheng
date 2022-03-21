@@ -307,6 +307,9 @@ struct App {
 static void createImageRenderable(Engine* engine, Scene* scene, testImage::App& app) {
     using filament::math::float4;
     // ? 为什么一个三角形就能够放一张图片？
+    // https://stackoverflow.com/questions/2588875/whats-the-best-way-to-draw-a-fullscreen-quad-in-opengl-3-2/51625078
+    // https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html
+    
     static constexpr float4 sFullScreenTriangleVertices[3] = {
             { -1.0f, -1.0f, 1.0f, 1.0f },
             {  3.0f, -1.0f, 1.0f, 1.0f },
@@ -471,10 +474,10 @@ void test_image(int argc, char** argv) {
 
             app.scene.imageMaterial->setDefaultParameter("transform", transform);
             app.scene.imageMaterial->setDefaultParameter(
-                    "image", app.scene.imageTexture, app.scene.sampler);
+                    "yunzhengInput", app.scene.imageTexture, app.scene.sampler);
         } else {
             app.scene.imageMaterial->setDefaultParameter(
-                    "image", app.scene.defaultTexture, app.scene.sampler);
+                    "yunzhengInput", app.scene.defaultTexture, app.scene.sampler);
         }
 
         app.scene.imageMaterial->setDefaultParameter("showImage", app.showImage ? 1 : 0);
