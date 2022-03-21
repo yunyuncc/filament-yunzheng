@@ -22,6 +22,7 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <imgui.h>
 using namespace std;
 
 using namespace filament;
@@ -287,7 +288,6 @@ void test_triangle() {
 namespace testImage{
 struct App {
     Engine* engine;
-    SimpleViewer* viewer;
     Config config;
     Camera* mainCamera;
 
@@ -301,6 +301,7 @@ struct App {
         TextureSampler sampler;
     } scene;
     bool showImage = false;
+    filament::math::float3 backgroundColor = filament::math::float3(0.0f);
 };
 }
 static void createImageRenderable(Engine* engine, Scene* scene, testImage::App& app) {
@@ -344,7 +345,8 @@ static void createImageRenderable(Engine* engine, Scene* scene, testImage::App& 
     app.scene.imageIndexBuffer = indexBuffer;
     app.scene.imageMaterial = material;
 
-    // 这个只有一个像素的纹理是干啥的 ？
+    // 这个只有一个像素的纹理是干啥的, Material 的 image参数如果没有设置正确的纹理就会一直在日志中报错， 这里
+    // 是为了在没有加载图片的时候让它闭嘴
     Texture * texture = Texture::Builder()
         .width(1)
         .height(1)
@@ -418,15 +420,10 @@ void test_image(int argc, char** argv) {
     app.config.backend = filament::Engine::Backend::OPENGL;
     //Path filename = argv[1];
     app.config.title = "Filament Image Viewer";
+    //app.config.splitView = true;
 
     auto setup = [&](Engine*engine, View* view, Scene* scene){
         app.engine = engine;
-        app.viewer = new SimpleViewer(engine, scene, view, 410);
-        app.viewer->getSettings().viewer.autoScaleEnabled = false;
-        app.viewer->getSettings().view.bloom.enabled = false;
-        app.viewer->getSettings().view.ssao.enabled = false;
-        app.viewer->getSettings().view.dithering = Dithering::NONE;
-        app.viewer->getSettings().view.antiAliasing = AntiAliasing::NONE;
         createImageRenderable(engine, scene, app);
     };
 
@@ -437,25 +434,60 @@ void test_image(int argc, char** argv) {
         engine->destroy(app.scene.imageMaterial);
         engine->destroy(app.scene.imageTexture);
         engine->destroy(app.scene.defaultTexture);
-        if(app.viewer) {
-            delete app.viewer;
-        }
-    };
-
-    auto gui = [&app](Engine* engine, View* view) {
-
     };
 
     auto preRender = [&app](Engine* engine, View* view, Scene* scene, Renderer* renderer) {
+        if (app.showImage) {
+            Texture *texture = app.scene.imageTexture;
+            float srcWidth = texture->getWidth();
+            float srcHeight = texture->getHeight();
+            float dstWidth = view->getViewport().width;
+            float dstHeight = view->getViewport().height;
 
+            float srcRatio = srcWidth / srcHeight;
+            float dstRatio = dstWidth / dstHeight;
+
+            bool xMajor = dstWidth / srcWidth > dstHeight / srcHeight;
+
+            float sx = 1.0f;
+            float sy = dstRatio / srcRatio;
+
+            float tx = 0.0f;
+            float ty = ((1.0f - sy) * 0.5f) / sy;
+
+            if (xMajor) {
+                sx = srcRatio / dstRatio;
+                sy = 1.0;
+                tx = ((1.0f - sx) * 0.5f) / sx;
+                ty = 0.0f;
+            }
+
+            //缩放加平移矩阵
+            filament::math::mat3f transform(
+                    1.0f / sx,  0.0f,       0.0f,
+                    0.0f,       1.0f / sy,  0.0f,
+                    -tx,        -ty,         1.0f
+            );
+
+            app.scene.imageMaterial->setDefaultParameter("transform", transform);
+            app.scene.imageMaterial->setDefaultParameter(
+                    "image", app.scene.imageTexture, app.scene.sampler);
+        } else {
+            app.scene.imageMaterial->setDefaultParameter(
+                    "image", app.scene.defaultTexture, app.scene.sampler);
+        }
+
+        app.scene.imageMaterial->setDefaultParameter("showImage", app.showImage ? 1 : 0);
+        app.scene.imageMaterial->setDefaultParameter(
+                "backgroundColor", RgbType::sRGB, app.backgroundColor);
     };
 
     FilamentApp& filamentApp = FilamentApp::get();
     filamentApp.setDropHandler([&](std::string path) {
-
+        loadImage(app, app.engine, Path(path));
     });
 
-    filamentApp.run(app.config, setup, cleanup, gui, preRender);
+    filamentApp.run(app.config, setup, cleanup, nullptr, preRender);
     return;
 }
 

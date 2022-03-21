@@ -73,11 +73,24 @@ include_directories(${FILAMENT_INSTALL_PREFIX}/filament/include)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/libsdl2/tnt)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/imgui/tnt)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/filamentlibs/filagui)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/astcenc/tnt)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/etc2comp)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/libpng/tnt)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/tinyexr/tnt)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/filamentlibs/imageio)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/benchmark/tnt)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/libgtest/tnt)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/robin-map/tnt)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/filamentlibs/math)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/filamentlibs/utils)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/stb/tnt)
+
 
 #不知道为什么assimp 的config.h 生成到这里了
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/third_party/libassimp/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/third_party/libassimp)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/filamentlibs/imageio/include)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/filamentlibs/utils/include)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/libassimp/tnt)
 
 set(TARGET demo)
@@ -101,6 +114,9 @@ set(FILAMENT_LIBS
     gltfio
     gltfio_core
     dracodec
+    imageio
+    math
+    utils
 )
 add_subdirectory(filamentapp)
 
@@ -111,6 +127,8 @@ target_link_directories(${TARGET} PRIVATE ${FILAMENT_INSTALL_PREFIX}/filament/li
 target_link_libraries(${TARGET} PRIVATE ${FRAMEWORKS})
 target_link_libraries(${TARGET} PRIVATE ${FILAMENT_LIBS})
 target_link_libraries(${TARGET} PRIVATE filamentapp)
+
+
 target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/filamentapp/include)
 target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/filamentapp/generated)
 

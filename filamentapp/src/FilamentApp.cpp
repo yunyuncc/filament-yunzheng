@@ -374,7 +374,7 @@ void FilamentApp::run(const Config& config, SetupCallback setupCallback,
     }
     while (!mClosed) {
         if (mSidebarWidth != sidebarWidth || mCameraFocalLength != cameraFocalLength) {
-            throw std::runtime_error("not support change cameraFocal or sidebarWidth");
+            //throw std::runtime_error("not support change cameraFocal or sidebarWidth");
             window->configureCamerasForWindow();
             sidebarWidth = mSidebarWidth;
             cameraFocalLength = mCameraFocalLength;
