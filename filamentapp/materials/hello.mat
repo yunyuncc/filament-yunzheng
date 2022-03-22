@@ -16,7 +16,8 @@ material{
         }
     ],
     requires : [
-        color
+        color,
+        uv0
     ],
     // 顶点着色器和片元着色器之间的 差值变量
     variables : [
@@ -41,5 +42,10 @@ fragment {
         material.baseColor = vec4(materialParams.backgroundColor, 1.0f);    // 从uniform参数获取颜色
         material.baseColor = variable_mycolor;                              // 从顶点和片元着色器之间的 插值变量获取颜色
         material.baseColor = getColor();                                    // 从顶点属性获取颜色
+
+        vec4 color = texture(materialParams_input0, getUV0());
+        material.baseColor = color*getColor(); 
+        material.emissive = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+        material.postLightingColor = vec4(0.0f, 0.0f, 0.0f, 0.0f);
     }
 }

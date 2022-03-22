@@ -19,6 +19,7 @@
 #include <viewer/SimpleViewer.h>
 #include <image/LinearImage.h>
 #include <imageio/ImageDecoder.h>
+#include <stb_image.h>
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -392,7 +393,7 @@ static void loadImage(testImage::App& app, Engine* engine, Path filename) {
     Texture* texture = Texture::Builder()
         .width(w)
         .height(h)
-        .levels(0xff)// ???
+        .levels(1)// ???
         .format(channels == 3? Texture::InternalFormat::RGB16F : Texture::InternalFormat::RGBA16F)
         .sampler(Texture::Sampler::SAMPLER_2D)
         .build(*engine);
@@ -498,15 +499,18 @@ void learnOpenGL() {
     struct App{
         VertexBuffer* vb;
         IndexBuffer* ib;
+        Texture* texture;
         Material* material;
         Entity rectEntity;
+        TextureSampler sampler;
     }app;
-    float s = 0.9f;
+    float s = 1.0f;
     static float vertices[] = {
-        s,      s,      0.0f,  1.0f, 0.0f, 0.0f, // 右上角
-        s,      -1*s,   0.0f,  0.0f, 1.0f, 0.0f,// 右下角
-        -1*s,   -1*s,   0.0f,  0.0f, 0.0f, 1.0f,// 左下角
-        -1*s,   s,      0.0f,  0.0f, 0.0f, 1.0f// 左上角
+        // --位置               ------颜色------           --纹理坐标
+        s,      s,      0.0f,  1.0f, 0.0f, 0.0f,         1.0f, 1.0f, // 右上角
+        s,      -1*s,   0.0f,  0.0f, 1.0f, 0.0f,         1.0f, 0.0f,// 右下角
+        -1*s,   -1*s,   0.0f,  0.0f, 0.0f, 1.0f,         0.0f, 0.0f,// 左下角
+        -1*s,   s,      0.0f,  0.0f, 0.0f, 1.0f,         0.0f, 1.0f// 左上角
     };
 
     static unsigned int indices[] = { // 注意索引从0开始! 
@@ -519,8 +523,9 @@ void learnOpenGL() {
         app.vb = VertexBuffer::Builder()
                 .vertexCount(4)
                 .bufferCount(1)
-                .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, 0, sizeof(float)*6)
-                .attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::FLOAT3, sizeof(float)*3, sizeof(float)*6)
+                .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, 0, sizeof(float)*8)
+                .attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::FLOAT3, sizeof(float)*3, sizeof(float)*8)
+                .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, sizeof(float)*6, sizeof(float)*8)
                 .build(*engine);
         // 将数据拷贝到顶点缓冲区
         app.vb->setBufferAt(*engine, 0,
@@ -543,6 +548,34 @@ void learnOpenGL() {
 
         app.material->setDefaultParameter("backgroundColor", color);
 
+
+
+        int width, height, nrChannels;
+        unsigned char *data = stbi_load("/Users/yunzheng/Desktop/code/filament-yunzheng/resource/container.jpeg", &width, &height, &nrChannels, 0);
+        assert(data != nullptr);
+        assert(nrChannels == 3 || nrChannels == 4);
+        app.texture = Texture::Builder()
+            .width(width)
+            .height(height)
+            .sampler(Texture::Sampler::SAMPLER_2D)
+            .levels(1)
+            .format(nrChannels == 4 ? Texture::InternalFormat::RGBA8 : Texture::InternalFormat::RGB8)
+            .build(*engine);
+        Texture::PixelBufferDescriptor buffer(data, width*height*nrChannels*sizeof(unsigned char),
+            nrChannels == 3 ? Texture::Format::RGB : Texture::Format::RGBA,
+            Texture::Type::UBYTE,
+            [](void* buf, size_t, void* data){
+                stbi_image_free(reinterpret_cast<unsigned char *>(buf));
+            });
+        
+        app.texture->setImage(*engine, 0, std::move(buffer));
+        app.sampler.setMagFilter(TextureSampler::MagFilter::LINEAR);
+        app.sampler.setMinFilter(TextureSampler::MinFilter::LINEAR_MIPMAP_LINEAR);
+        app.sampler.setWrapModeS(TextureSampler::WrapMode::REPEAT);
+        app.sampler.setWrapModeT(TextureSampler::WrapMode::REPEAT);
+
+        app.material->setDefaultParameter("input0", app.texture, app.sampler);
+
         app.rectEntity = EntityManager::get().create();
         RenderableManager::Builder(1)
             .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
@@ -552,12 +585,14 @@ void learnOpenGL() {
             .build(*engine, app.rectEntity);
         
         scene->addEntity(app.rectEntity);
+
     };
     auto cleanup = [&app](Engine* engine, View*, Scene*){
         engine->destroy(app.vb);
         engine->destroy(app.ib);
         engine->destroy(app.material);
         engine->destroy(app.rectEntity);
+        engine->destroy(app.texture);
     };
     FilamentApp::get().run(config, setup, cleanup);
 }
@@ -590,10 +625,10 @@ int main(int argc, char** argv)
 #if 0
     test_triangle();
 #endif
-#if 1
+#if 0
     test_image(argc, argv);
 #endif
-#if 0
+#if 1
     learnOpenGL();
 #endif
     return 0;

@@ -91,6 +91,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/third_party/libassimp/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/third_party/libassimp)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/filamentlibs/imageio/include)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/filamentlibs/utils/include)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/third_party/stb)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/third_party/libassimp/tnt)
 
 set(TARGET demo)
@@ -117,6 +118,7 @@ set(FILAMENT_LIBS
     imageio
     math
     utils
+    stb
 )
 add_subdirectory(filamentapp)
 
