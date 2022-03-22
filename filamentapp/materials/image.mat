@@ -36,8 +36,8 @@ material {
 
 vertex {
     void materialVertex(inout MaterialVertexInputs material) {
-        //material.yunzhengImageUV.st = getPosition().st * 0.5 + 0.5;
-        material.yunzhengImageUV.st = getPosition().st;
+        // 因为我们使用一个全屏三角形来渲染整个纹理，所以要这样处理
+        material.yunzhengImageUV.st = getPosition().st * 0.5 + 0.5;
     }
 }
 
