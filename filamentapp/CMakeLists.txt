@@ -99,6 +99,7 @@ ${CMAKE_CURRENT_LIST_DIR}/materials/depthVisualizer.mat
 ${CMAKE_CURRENT_LIST_DIR}/materials/transparentColor.mat
 ${CMAKE_CURRENT_LIST_DIR}/materials/bakedColor.mat
 ${CMAKE_CURRENT_LIST_DIR}/materials/image.mat
+${CMAKE_CURRENT_LIST_DIR}/materials/hello.mat
 )
 
 set(GENERATION_ROOT ${CMAKE_CURRENT_BINARY_DIR})

@@ -1,0 +1,45 @@
+material{
+    name: Hello,
+    parameters : [
+        {
+            type : sampler2d,
+            name : input0
+        },
+        {
+            type : mat3,
+            name : transform,
+            precision : high
+        },
+        {
+            type : float3,
+            name : backgroundColor
+        }
+    ],
+    requires : [
+        color
+    ],
+    // 顶点着色器和片元着色器之间的 差值变量
+    variables : [
+        mycolor
+    ],
+    vertexDomain : device,
+    depthWrite : false,
+    shadingModel : unlit,
+    variantFilter : [ skinning, shadowReceiver, vsm ],
+    culling: none
+}
+
+vertex {
+    void materialVertex(inout MaterialVertexInputs material) {
+        material.mycolor = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+    }
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+
+        material.baseColor = vec4(materialParams.backgroundColor, 1.0f);    // 从uniform参数获取颜色
+        material.baseColor = variable_mycolor;                              // 从顶点和片元着色器之间的 插值变量获取颜色
+        material.baseColor = getColor();                                    // 从顶点属性获取颜色
+    }
+}

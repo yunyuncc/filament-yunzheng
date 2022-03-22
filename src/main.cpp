@@ -309,7 +309,7 @@ static void createImageRenderable(Engine* engine, Scene* scene, testImage::App& 
     // ? 为什么一个三角形就能够放一张图片？
     // https://stackoverflow.com/questions/2588875/whats-the-best-way-to-draw-a-fullscreen-quad-in-opengl-3-2/51625078
     // https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html
-    
+
     static constexpr float4 sFullScreenTriangleVertices[3] = {
             { -1.0f, -1.0f, 1.0f, 1.0f },
             {  3.0f, -1.0f, 1.0f, 1.0f },
@@ -493,7 +493,74 @@ void test_image(int argc, char** argv) {
     filamentApp.run(app.config, setup, cleanup, nullptr, preRender);
     return;
 }
+void learnOpenGL() {
+    Config config;
+    struct App{
+        VertexBuffer* vb;
+        IndexBuffer* ib;
+        Material* material;
+        Entity rectEntity;
+    }app;
+    float s = 0.9f;
+    static float vertices[] = {
+        s,      s,      0.0f,  1.0f, 0.0f, 0.0f, // 右上角
+        s,      -1*s,   0.0f,  0.0f, 1.0f, 0.0f,// 右下角
+        -1*s,   -1*s,   0.0f,  0.0f, 0.0f, 1.0f,// 左下角
+        -1*s,   s,      0.0f,  0.0f, 0.0f, 1.0f// 左上角
+    };
 
+    static unsigned int indices[] = { // 注意索引从0开始! 
+        0, 1, 3, // 第一个三角形
+        1, 2, 3  // 第二个三角形
+    };
+    auto setup = [&](Engine*engine, View* view, Scene* scene){
+
+        // 创建三角形的顶点缓冲区
+        app.vb = VertexBuffer::Builder()
+                .vertexCount(4)
+                .bufferCount(1)
+                .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT3, 0, sizeof(float)*6)
+                .attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::FLOAT3, sizeof(float)*3, sizeof(float)*6)
+                .build(*engine);
+        // 将数据拷贝到顶点缓冲区
+        app.vb->setBufferAt(*engine, 0,
+                VertexBuffer::BufferDescriptor(vertices, sizeof(vertices), nullptr));
+        
+        // 创建三角形的索引缓冲区
+        app.ib = IndexBuffer::Builder()
+                .indexCount(6)
+                .bufferType(IndexBuffer::IndexType::UINT)
+                .build(*engine);
+        // 设置索引缓冲区的数据
+        app.ib->setBuffer(*engine,
+                IndexBuffer::BufferDescriptor(indices, sizeof(indices), nullptr));
+
+        app.material = Material::Builder()
+            .package(FILAMENTAPP_HELLO_DATA, FILAMENTAPP_HELLO_SIZE)
+            .build(*engine);
+
+        filament::math::float3 color(0.0f,  0.8f,       0.0f);
+
+        app.material->setDefaultParameter("backgroundColor", color);
+
+        app.rectEntity = EntityManager::get().create();
+        RenderableManager::Builder(1)
+            .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
+            .material(0, app.material->getDefaultInstance())
+            .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, app.vb, app.ib, 0, 6)
+            .culling(false)
+            .build(*engine, app.rectEntity);
+        
+        scene->addEntity(app.rectEntity);
+    };
+    auto cleanup = [&app](Engine* engine, View*, Scene*){
+        engine->destroy(app.vb);
+        engine->destroy(app.ib);
+        engine->destroy(app.material);
+        engine->destroy(app.rectEntity);
+    };
+    FilamentApp::get().run(config, setup, cleanup);
+}
 int main(int argc, char** argv)
 {
 #if 0
@@ -525,6 +592,9 @@ int main(int argc, char** argv)
 #endif
 #if 1
     test_image(argc, argv);
+#endif
+#if 0
+    learnOpenGL();
 #endif
     return 0;
 }
