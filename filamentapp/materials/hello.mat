@@ -6,6 +6,10 @@ material{
             name : input0
         },
         {
+            type : sampler2d,
+            name : input1
+        },
+        {
             type : mat3,
             name : transform,
             precision : high
@@ -43,9 +47,8 @@ fragment {
         material.baseColor = variable_mycolor;                              // 从顶点和片元着色器之间的 插值变量获取颜色
         material.baseColor = getColor();                                    // 从顶点属性获取颜色
 
-        vec4 color = texture(materialParams_input0, getUV0());
-        material.baseColor = color*getColor(); 
-        material.emissive = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-        material.postLightingColor = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+        material.baseColor = texture(materialParams_input0, getUV0());         // 采样纹理0
+        material.baseColor = texture(materialParams_input1, getUV0())*getColor();     // 混合纹理1和顶点颜色
+        material.baseColor = mix(texture(materialParams_input0, getUV0()), texture(materialParams_input1, getUV0()), 0.2); // 混合纹理1 和纹理2
     }
 }

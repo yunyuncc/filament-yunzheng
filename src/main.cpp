@@ -494,12 +494,41 @@ void test_image(int argc, char** argv) {
     filamentApp.run(app.config, setup, cleanup, nullptr, preRender);
     return;
 }
+
+Texture* loadTexture(const std::string& path, Engine* engine) {
+    int width, height, nrChannels;
+    unsigned char *data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
+    if(!data){
+        return nullptr;
+    }
+    if(!(nrChannels == 3 || nrChannels == 4)){
+        return nullptr;
+    }
+    Texture* texture = Texture::Builder()
+        .width(width)
+        .height(height)
+        .sampler(Texture::Sampler::SAMPLER_2D)
+        .levels(1)
+        .format(nrChannels == 4 ? Texture::InternalFormat::RGBA8 : Texture::InternalFormat::RGB8)
+        .build(*engine);
+    Texture::PixelBufferDescriptor buffer(data, width*height*nrChannels*sizeof(unsigned char),
+        nrChannels == 3 ? Texture::Format::RGB : Texture::Format::RGBA,
+        Texture::Type::UBYTE,
+        [](void* buf, size_t, void* data){
+            stbi_image_free(reinterpret_cast<unsigned char *>(buf));
+        });
+    
+    texture->setImage(*engine, 0, std::move(buffer));
+    return texture;
+}
+
 void learnOpenGL() {
     Config config;
     struct App{
         VertexBuffer* vb;
         IndexBuffer* ib;
         Texture* texture;
+        Texture* texture2;
         Material* material;
         Entity rectEntity;
         TextureSampler sampler;
@@ -548,33 +577,17 @@ void learnOpenGL() {
 
         app.material->setDefaultParameter("backgroundColor", color);
 
-
-
-        int width, height, nrChannels;
-        unsigned char *data = stbi_load("/Users/yunzheng/Desktop/code/filament-yunzheng/resource/container.jpeg", &width, &height, &nrChannels, 0);
-        assert(data != nullptr);
-        assert(nrChannels == 3 || nrChannels == 4);
-        app.texture = Texture::Builder()
-            .width(width)
-            .height(height)
-            .sampler(Texture::Sampler::SAMPLER_2D)
-            .levels(1)
-            .format(nrChannels == 4 ? Texture::InternalFormat::RGBA8 : Texture::InternalFormat::RGB8)
-            .build(*engine);
-        Texture::PixelBufferDescriptor buffer(data, width*height*nrChannels*sizeof(unsigned char),
-            nrChannels == 3 ? Texture::Format::RGB : Texture::Format::RGBA,
-            Texture::Type::UBYTE,
-            [](void* buf, size_t, void* data){
-                stbi_image_free(reinterpret_cast<unsigned char *>(buf));
-            });
-        
-        app.texture->setImage(*engine, 0, std::move(buffer));
+        app.texture = loadTexture("/Users/yunzheng/Desktop/code/filament-yunzheng/resource/container.jpeg", engine);
+        app.texture2 = loadTexture("/Users/yunzheng/Desktop/code/filament-yunzheng/resource/awesomeface.png", engine);
+        assert(app.texture != nullptr);
+        assert(app.texture2 != nullptr);
         app.sampler.setMagFilter(TextureSampler::MagFilter::LINEAR);
         app.sampler.setMinFilter(TextureSampler::MinFilter::LINEAR_MIPMAP_LINEAR);
         app.sampler.setWrapModeS(TextureSampler::WrapMode::REPEAT);
         app.sampler.setWrapModeT(TextureSampler::WrapMode::REPEAT);
 
         app.material->setDefaultParameter("input0", app.texture, app.sampler);
+        app.material->setDefaultParameter("input1", app.texture2, app.sampler);
 
         app.rectEntity = EntityManager::get().create();
         RenderableManager::Builder(1)
